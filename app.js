@@ -116,6 +116,10 @@ async function token() {
 
 async function rest(table, query, opts) {
   opts = opts || {};
+  const method = opts.method || 'GET';
+  if (window.OFFLINE && method !== 'GET') {
+    throw new Error('现在没网，等联网后再改');
+  }
   const tk = await token();
   const r = await fetch(SUPA.url + '/rest/v1/' + TAB[table] + (query || ''), {
     method: opts.method || 'GET',
@@ -163,6 +167,40 @@ function sanitize(body) {
 
 function n(v) { const x = Number(v); return isNaN(x) ? 0 : x; }
 
+/* ---------------- 离线缓存 ---------------- */
+const CACHE_KEY = 'gift_snapshot_v1';
+window.OFFLINE = false;
+
+function saveCache(d) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), d: d })); } catch (e) { /* 存不下就算了 */ }
+}
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function setOnline(on, ts) {
+  window.OFFLINE = !on;
+  const bar = $('#offlineBar');
+  if (!bar) return;
+  if (on) {
+    bar.classList.remove('on');
+  } else {
+    const when = ts ? new Date(ts) : null;
+    const label = when
+      ? when.getMonth() + 1 + ' 月 ' + when.getDate() + ' 日 ' + String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0')
+      : '上次';
+    bar.innerHTML = '<span>现在没网，显示的是 ' + label + ' 存下来的数据。' +
+      '<b>看和查照常，改不了</b>——有网了会自动刷新。</span>' +
+      '<button class="btn sm" id="retryOnline">重试</button>';
+    bar.classList.add('on');
+    const btn = $('#retryOnline');
+    if (btn) btn.onclick = () => { boot(); };
+  }
+}
+
 async function rpcAll() {
   const tk = await token();
   const r = await fetch(SUPA.url + '/rest/v1/rpc/gift_snapshot', {
@@ -203,7 +241,12 @@ async function loadAll() {
       pools: res[8], poolItems: res[9],
     };
   }
+  hydrate(d);
+  saveCache(d);
+  setOnline(true);
+}
 
+function hydrate(d) {
   // Postgres 的 numeric 回来是字符串，统一转成数字，不然报价会算错
   (d.skus || []).forEach((x) => {
     x.cost = n(x.cost); x.price300 = n(x.price300); x.price1000 = n(x.price1000);
@@ -1322,7 +1365,7 @@ async function boot() {
       return;
     } catch (err) {
       console.warn(err);
-      storeSession(null);
+      if (!navigator.onLine) return goOffline();
     }
   }
 
@@ -1336,9 +1379,40 @@ async function boot() {
     console.warn('自动进入失败', err);
   }
 
-  // 3) 兜底：手动登录
+  // 3) 没网：用上次存下来的数据顶上
+  if (goOffline()) return;
+
+  // 4) 兜底：手动登录
   hideBoot();
   showLogin('自动进入失败，先手动登录一次');
+}
+
+function goOffline() {
+  const cached = readCache();
+  if (!cached || !cached.d) return false;
+  hydrate(cached.d);
+  setOnline(false, cached.ts);
+  hideBoot();
+  const lg = $('#login');
+  if (lg) lg.classList.remove('on');
+  const tip = $('#savedTip');
+  if (tip) tip.textContent = '离线模式（看上次缓存）';
+  applyHash();
+  return true;
+}
+
+window.addEventListener('online', () => {
+  if (window.OFFLINE) { toast('网络回来了，正在刷新…'); boot(); }
+});
+window.addEventListener('offline', () => {
+  if (!window.OFFLINE) setOnline(false, (readCache() || {}).ts);
+});
+
+// 注册 Service Worker（离线打开靠它）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW 没装上', e));
+  });
 }
 
 boot();

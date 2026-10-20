@@ -673,3 +673,15 @@ td.down{color:var(--ok);font-weight:600}
   .tr-when{grid-column:1;font-size:11px}
   .tr-btns{grid-column:2;grid-row:1 / span 2}
 }
+
+/* ---------- 离线提示条 ---------- */
+.offline-bar{display:none;position:sticky;top:0;z-index:60;background:#b8860b;color:#fff;
+  padding:9px 16px;font-size:12.5px;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.offline-bar.on{display:flex}
+.offline-bar b{font-weight:600}
+.offline-bar .btn{background:rgba(255,255,255,.18);border:none;color:#fff;padding:5px 12px}
+.offline-bar .btn:hover{background:rgba(255,255,255,.3);color:#fff}
+
+@media (max-width:760px){
+  .offline-bar{font-size:12px;padding:8px 12px}
+}
