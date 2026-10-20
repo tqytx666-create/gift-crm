@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [], pools: [], poolItems: [],
+  orders: [], payments: [], pools: [], poolItems: [], settings: {},
   view: 'customers', q: '',
 };
 
@@ -224,6 +224,7 @@ async function loadAll() {
   S.payments = d.payments || [];
   S.pools = d.pools || [];
   S.poolItems = d.poolItems || [];
+  S.settings = d.settings || {};
   updateCounts();
 }
 
@@ -272,6 +273,12 @@ function openForm(title, fields, values, onSubmit) {
         const ot = typeof o === 'string' ? o : o.t;
         return '<option value="' + esc(ov) + '"' + (String(ov) === String(val) ? ' selected' : '') + '>' + esc(ot) + '</option>';
       }).join('') + '</select>';
+    } else if (f.type === 'image') {
+      input = '<div class="imgpick" data-key="' + f.key + '">' +
+        '<img class="imgprev" src="' + esc(val) + '" style="' + (val ? '' : 'display:none') + '">' +
+        '<label class="imgbtn">选图<input type="file" accept="image/*" data-for="' + f.key + '" hidden></label>' +
+        '<button type="button" class="imgclear" data-clear="' + f.key + '">清除</button></div>' +
+        '<input type="hidden" name="' + f.key + '" value="' + esc(val) + '">';
     } else if (f.type === 'textarea') {
       input = '<textarea name="' + f.key + '" placeholder="' + esc(f.ph || '') + '">' + esc(val) + '</textarea>';
     } else {
@@ -287,6 +294,39 @@ function openForm(title, fields, values, onSubmit) {
   form.className = 'modal-body form-grid';
   form.innerHTML = html;
   formSubmit = onSubmit;
+
+  // 图片上传
+  form.querySelectorAll('input[type=file]').forEach((inp) => {
+    inp.onchange = async () => {
+      const file = inp.files && inp.files[0];
+      if (!file) return;
+      const key = inp.dataset.for;
+      const wrap = form.querySelector('.imgpick[data-key="' + key + '"]');
+      if (wrap) wrap.classList.add('busy');
+      try {
+        const url = await uploadImage(file, key);
+        form.querySelector('input[name="' + key + '"]').value = url;
+        const img = wrap.querySelector('.imgprev');
+        if (img) { img.src = url; img.style.display = ''; }
+      } catch (err) {
+        toast('上传失败：' + err.message);
+      } finally {
+        if (wrap) wrap.classList.remove('busy');
+        inp.value = '';
+      }
+    };
+  });
+  form.querySelectorAll('[data-clear]').forEach((b) => {
+    b.onclick = () => {
+      const key = b.dataset.clear;
+      const hidden = form.querySelector('input[name="' + key + '"]');
+      if (hidden) hidden.value = '';
+      const wrap = form.querySelector('.imgpick[data-key="' + key + '"]');
+      const img = wrap && wrap.querySelector('.imgprev');
+      if (img) { img.src = ''; img.style.display = 'none'; }
+    };
+  });
+
   $('#modalMask').classList.add('on');
   const first = form.querySelector('input,select,textarea');
   if (first) setTimeout(() => first.focus(), 30);
@@ -335,6 +375,7 @@ document.querySelectorAll('.nav-btn').forEach((b) => {
 });
 
 function setView(view, customerId) {
+  if (typeof leavePrint === 'function') leavePrint();
   if (S.view !== view) {
     S.q = '';
     $('#globalSearch').value = '';
@@ -349,6 +390,10 @@ function setView(view, customerId) {
 function applyHash() {
   const raw = (location.hash || '').replace(/^#/, '');
   const parts = raw.split('/');
+  if (parts[0] === 'print' && parts[1] === 'quote' && typeof window.showPrintQuote === 'function') {
+    window.showPrintQuote(Number(parts[2]));
+    return;
+  }
   const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
@@ -906,6 +951,9 @@ function renderData() {
         '<li>CSV 可以用 Excel 打开，发给别人不怕格式乱。</li>' +
         '<li>换手机、换电脑，同一个账号登进去就是同一份数据。</li>' +
       '</ul>' +
+      '<div class="section-title">店铺信息（打印报价单用）</div>' +
+      '<p class="small muted" style="margin-top:0">这里填的名字、电话、地址、logo，会自动出现在打印出来的报价单上。</p>' +
+      '<button class="btn" data-act="edit-shop" style="margin-top:6px">编辑店铺信息</button>' +
       '<div class="section-title">谁能看到</div>' +
       '<p class="small muted" style="margin-top:0">现在不设密码，<b>谁拿到网址谁就能进</b>。' +
       '所以别把这个网址发到群里、朋友圈，也别做成公开的二维码。' +
@@ -937,6 +985,7 @@ function customerFields() {
     { key: 'stage', label: '阶段', type: 'select', options: STAGES },
     { key: 'source', label: '来源', type: 'select', options: [''].concat(SOURCES) },
     { key: 'last_contact', label: '最近联系', ph: '2026-10-20' },
+    { key: 'logo_url', label: '客户 logo（报价单上会显示）', type: 'image', full: true },
     { key: 'note', label: '备注', type: 'textarea', full: true },
   ];
 }
@@ -957,6 +1006,7 @@ function productFields() {
     { key: 'supplier_id', label: '厂家', type: 'select', options: [{ v: '', t: '未指定' }].concat(S.suppliers.map((s) => ({ v: s.id, t: s.name }))) },
     { key: 'category', label: '类目', ph: '杯子 / 小家电' },
     { key: 'unit', label: '单位', ph: '个 / 套 / 盒', def: '个' },
+    { key: 'image', label: '产品图（报价单上会显示）', type: 'image', full: true },
     { key: 'note', label: '说明', type: 'textarea', full: true },
   ];
 }

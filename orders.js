@@ -230,6 +230,7 @@ function openQuoteDetail(id) {
       (q.status !== 'sent' ? '<button class="btn sm" data-act="q-status" data-id="' + q.id + '" data-v="sent">标记已发出</button>' : '') +
       (q.status !== 'won' ? '<button class="btn sm" data-act="q-status" data-id="' + q.id + '" data-v="won">标记成交</button>' : '') +
       (q.status !== 'lost' ? '<button class="btn sm" data-act="q-status" data-id="' + q.id + '" data-v="lost">标记丢单</button>' : '') +
+      '<button class="btn sm" data-act="print-quote" data-id="' + q.id + '">打印 / 存 PDF</button>' +
       '<button class="btn sm primary" data-act="to-order" data-id="' + q.id + '">转成订单</button>' +
       '<button class="btn sm" data-act="copy-quote" data-id="' + q.id + '">复制文字</button>' +
       '<button class="btn sm danger" data-act="del-quote" data-id="' + q.id + '">删除</button>' +
