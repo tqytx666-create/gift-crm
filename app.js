@@ -402,7 +402,7 @@ function applyHash() {
     window.showPrintQuote(Number(parts[2]));
     return;
   }
-  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'inbox', 'data'];
+  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'inbox', 'dashboard', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
 }
@@ -432,6 +432,8 @@ function topActions() {
     box.innerHTML = '<button class="btn primary" data-act="go-quote">+ 新建报价</button>';
   } else if (S.view === 'pools') {
     box.innerHTML = '<button class="btn primary" data-act="add-pool">+ 建一个拼单</button>';
+  } else if (S.view === 'dashboard') {
+    box.innerHTML = '<button class="btn" data-act="go-orders">看订单</button>';
   } else {
     box.innerHTML = '';
   }
@@ -442,6 +444,7 @@ function render() {
   if (S.view === 'orders' && typeof window.renderOrders === 'function') return window.renderOrders();
   if (S.view === 'pools' && typeof window.renderPools === 'function') return window.renderPools();
   if (S.view === 'inbox' && typeof window.renderInbox === 'function') return window.renderInbox();
+  if (S.view === 'dashboard' && typeof window.renderDashboard === 'function') return window.renderDashboard();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
 }
@@ -1160,6 +1163,10 @@ document.addEventListener('click', async (e) => {
   }
   if (act === 'go-pools') {
     location.hash = '#pools';
+    return;
+  }
+  if (act === 'go-orders') {
+    location.hash = '#orders';
     return;
   }
 
