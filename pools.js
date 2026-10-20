@@ -79,11 +79,11 @@ function renderPools() {
   const cards = list.map(poolCard).join('');
 
   $('#view').innerHTML =
-    '<div class="cards">' +
-      '<div class="stat"><b>' + open.length + '</b><span>正在拼的单</span></div>' +
-      '<div class="stat"><b>' + openQty + '</b><span>筹码总量（套）</span></div>' +
+    '<div class="cards pool-stats">' +
+      '<div class="stat"><b>' + open.length + '</b><span>正在拼</span></div>' +
+      '<div class="stat"><b>' + openQty + '</b><span>总数（套）</span></div>' +
       '<div class="stat"><b>' + pools.filter((p) => p.status === 'full').length + '</b><span>已凑满</span></div>' +
-      '<div class="stat"><b>' + (S.poolItems || []).length + '</b><span>拉进来的客户</span></div>' +
+      '<div class="stat"><b>' + (S.poolItems || []).length + '</b><span>参与客户</span></div>' +
     '</div>' + segHtml +
     (cards ? '<div class="pool-cards">' + cards + '</div>'
       : '<div class="table-wrap"><div class="empty">还没有拼单。<br>' +
@@ -112,14 +112,33 @@ function poolCard(p) {
     '<div class="pc-bar"><i style="width:' + st.pct + '%"></i></div>' +
     '<div class="pc-nums">' +
       '<span><b>' + st.total + '</b> / ' + st.target + ' 套</span>' +
-      '<span class="' + (full ? 'ok' : 'warn') + '">' + (full ? '已凑满' : '还差 ' + st.gap + ' 套') + '</span>' +
+      '<span class="' + (full ? 'ok' : 'warn') + '">' +
+        (full ? '已凑满' : '还差 ' + st.gap + ' 套' +
+          (st.people >= 2 && st.total > 0
+            ? '（约 ' + Math.max(1, Math.ceil(st.gap / Math.max(1, Math.round(st.total / st.people)))) + ' 个客户）'
+            : '')) +
+      '</span>' +
     '</div>' +
+    (st.items.length
+      ? '<div class="pc-people">' + st.items.slice(0, 4).map((i) =>
+          '<span class="pc-chip">' + esc((i.customer_name || custName(i.customer_id) || '').slice(0, 6)) +
+          ' ' + Number(i.qty || 0) + '</span>').join('') +
+        (st.items.length > 4 ? '<span class="pc-chip muted">+' + (st.items.length - 4) + '</span>' : '') +
+        '</div>'
+      : '') +
     '<div class="pc-foot">' +
       '<span>' + st.people + ' 个客户' + (p.deadline ? '　·　截止 ' + esc(p.deadline) : '') +
         (overdue ? ' <span class="tag warn">已过期</span>' : '') + '</span>' +
       '<span class="pc-price">单价 ' + money2(st.unitCost) +
         (saved > 0 ? '<i>还能再降 ' + money2(saved) + '</i>' : '') + '</span>' +
     '</div>' +
+    (p.status === 'open'
+      ? '<div class="pc-act">' +
+          '<button class="btn sm primary" data-act="add-pool-item" data-id="' + p.id + '">拉人进来</button>' +
+          '<button class="btn sm" data-act="pool-message" data-id="' + p.id + '">群发话术</button>' +
+          '<button class="btn sm ghost" data-act="open-pool" data-id="' + p.id + '">详情</button>' +
+        '</div>'
+      : '') +
   '</div>';
 }
 
