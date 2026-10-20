@@ -65,10 +65,12 @@ function renderOrders() {
     .filter((o) => !OSDONE[o.status])
     .reduce((a, o) => a + Math.max(0, dueOf(o)), 0);
 
+  const shipList = shippingList();
   const tabs = [
     ['quotes', '报价单', quotes.length],
     ['orders', '订单', orders.length],
     ['pay', '收款', ''],
+    ['ship', '物流', shipList.length],
   ];
   const segHtml = '<div class="seg">' + tabs.map((t) =>
     '<button data-otab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] +
@@ -77,6 +79,7 @@ function renderOrders() {
   let body = '';
   if (tab === 'quotes') body = quotesPanel(quotes);
   else if (tab === 'orders') body = ordersPanel(orders);
+  else if (tab === 'ship') body = shipPanel(orders);
   else body = payPanel(orders);
 
   $('#view').innerHTML =
@@ -146,6 +149,67 @@ function ordersPanel(orders) {
   return '<div class="table-wrap order-list"><table><thead><tr>' +
     '<th>客户 / 单号</th><th class="num">金额</th><th class="num">待收</th><th>状态</th><th>日期</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+/* ---------------- 物流 ---------------- */
+const SHIP_warn = 7;    // 发货超过这么多天还没签收就该问了
+const SHIP_late = 12;   // 超过这么多天算异常
+
+function daysSinceShipped(o) {
+  const start = o.shipped_at || localDate(o.created_at);
+  const a = dnum(start);
+  if (a === null) return null;
+  return Math.max(0, Math.round((dnum(todayStr()) - a) / 86400000));
+}
+
+// 发了货、还没签收、也没标完成的
+function shippingList() {
+  return (S.orders || [])
+    .filter((o) => !OSDONE[o.status] && o.status !== 'pending' && (o.shipped_at || o.status === 'shipped'))
+    .map((o) => Object.assign({}, o, { _days: daysSinceShipped(o) }))
+    .sort((a, b) => (b._days || 0) - (a._days || 0));
+}
+
+function shipLevel(o) {
+  const d = o._days || 0;
+  if (d >= SHIP_late) return { cls: 'bad', text: '超 ' + d + ' 天', tip: '该打电话问物流了' };
+  if (d >= SHIP_warn) return { cls: 'warn', text: d + ' 天', tip: '还没签收，问一下' };
+  return { cls: '', text: d + ' 天', tip: '在途' };
+}
+
+function shipPanel(orders) {
+  const list = shippingList();
+  const late = list.filter((o) => (o._days || 0) >= SHIP_late);
+  const warn = list.filter((o) => (o._days || 0) >= SHIP_warn && (o._days || 0) < SHIP_late);
+
+  const rows = list.length ? list.map((o) => {
+    const lv = shipLevel(o);
+    return '<div class="ship-card ' + lv.cls + '">' +
+      '<div class="sp-head"><b>' + esc(custName(o.customer_id, o.customer_name)) + '</b>' +
+        '<span class="tag ' + (lv.cls || 'blue') + '">' + lv.text + '</span></div>' +
+      '<div class="sp-line">' + esc(o.code || '') +
+        (o.carrier ? '　' + esc(o.carrier) : '') +
+        (o.tracking_no ? '　单号 ' + esc(o.tracking_no) : '　<span class="sc-over">没填物流单号</span>') + '</div>' +
+      '<div class="sp-line muted">' + esc(o.shipped_at || localDate(o.created_at)) + ' 发的' +
+        (o.remind_count ? '　已催 ' + o.remind_count + ' 次' + (o.last_remind ? '（最近 ' + esc(o.last_remind) + '）' : '') : '') +
+        '　· ' + esc(lv.tip) + '</div>' +
+      '<div class="sp-act">' +
+        '<button class="btn sm" data-act="ship-remind" data-id="' + o.id + '">记一次催办</button>' +
+        '<button class="btn sm primary" data-act="ship-received" data-id="' + o.id + '">标记已签收</button>' +
+        '<button class="btn sm" data-act="open-order" data-id="' + o.id + '">看订单</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') : '<div class="table-wrap"><div class="empty">现在没有在途的货。<br>' +
+      '<span class="small muted">订单填了物流单号、状态推进到「已发货」之后，就会出现在这里。</span></div></div>';
+
+  return '<div class="cards" style="grid-template-columns:repeat(3,1fr)">' +
+      '<div class="stat"><b>' + list.length + '</b><span>在途</span></div>' +
+      '<div class="stat warn"><b>' + warn.length + '</b><span>超过 ' + SHIP_warn + ' 天没签收</span></div>' +
+      '<div class="stat ' + (late.length ? 'warn' : 'ok') + '"><b>' + late.length + '</b><span>超过 ' + SHIP_late + ' 天（该打电话）</span></div>' +
+    '</div>' +
+    (late.length ? '<div class="hint" style="margin-bottom:12px">大件走物流，到县里没人接电话就不送了。超过 ' +
+      SHIP_late + ' 天没签收的，直接打物流电话问货在哪。</div>' : '') +
+    '<div class="ship-list">' + rows + '</div>';
 }
 
 function payPanel(orders) {
@@ -279,7 +343,11 @@ function openOrderDetail(id) {
       kv('已收', money(paid)) +
       kv('待收', money(due)) +
       kv('预计发货', o.expected_ship || '') +
+      kv('实际发货', o.shipped_at || '') +
+      kv('承运商', o.carrier || '') +
       kv('物流单号', o.tracking_no || '') +
+      kv('签收日期', o.received_at || '') +
+      kv('催过几次', o.remind_count ? String(o.remind_count) + ' 次' : '') +
     '</div>' +
     '<div class="section-title">明细</div><div class="qbox">' + itemsHtml + '</div>' +
     '<div class="section-title">收款记录 <span class="muted small">' + pays.length + ' 笔</span></div>' +
@@ -388,14 +456,39 @@ document.addEventListener('click', async (e) => {
   if (act === 'o-ship') {
     const o = byId(S.orders, id);
     openForm('物流信息 · ' + (o && o.code ? o.code : ''), [
-      { key: 'tracking_no', label: '物流单号', full: true },
+      { key: 'carrier', label: '哪家物流 / 承运商', ph: '德邦 / 中通快运 / 专线' },
+      { key: 'tracking_no', label: '物流单号' },
       { key: 'expected_ship', label: '预计发货日' },
       { key: 'shipped_at', label: '实际发货日', def: todayStr() },
+      { key: 'note2', label: '物流备注', type: 'textarea', full: true, ph: '到县城自提，客户电话 138...' },
     ], o, async (b) => {
-      await save('orders', id, { tracking_no: b.tracking_no, expected_ship: b.expected_ship || null, shipped_at: b.shipped_at || null });
+      await save('orders', id, {
+        carrier: b.carrier || '', tracking_no: b.tracking_no,
+        expected_ship: b.expected_ship || null, shipped_at: b.shipped_at || null,
+      });
       if (o && o.status === 'producing') await save('orders', id, { status: 'shipped' });
       openOrderDetail(id);
     });
+    return;
+  }
+  if (act === 'ship-remind') {
+    const o = byId(S.orders, id);
+    if (!o) return;
+    await save('orders', id, {
+      remind_count: (Number(o.remind_count) || 0) + 1,
+      last_remind: todayStr(),
+    });
+    toast('已记一笔催办');
+    return;
+  }
+  if (act === 'ship-received') {
+    const o = byId(S.orders, id);
+    if (!o) return;
+    await save('orders', id, {
+      received_at: todayStr(),
+      status: o.status === 'shipped' ? 'done' : o.status,
+    });
+    toast('已签收，这单从在途里移走了');
     return;
   }
   if (act === 'o-del') {

@@ -36,6 +36,13 @@ function healthIssues() {
   });
 
   (S.orders || []).forEach((o) => {
+    if (!(o.status === 'done' || o.status === 'cancelled') && o.tracking_no && o.shipped_at) {
+      const d = (typeof daysSinceShipped === 'function') ? daysSinceShipped(o) : null;
+      if (d !== null && d >= 12) {
+        push('发货超 12 天没签收', custName(o.customer_id, o.customer_name) + ' · ' + (o.code || ''),
+          'open-order', o.id, '已经 ' + d + ' 天了，打物流电话问货在哪');
+      }
+    }
     if ((o.status === 'shipped' || o.status === 'done') && !o.tracking_no) {
       push('发货了但没物流单号', custName(o.customer_id, o.customer_name) + ' · ' + (o.code || ''), 'open-order', o.id, '客户问货到哪了，你查不到');
     }

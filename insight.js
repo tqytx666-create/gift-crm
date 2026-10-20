@@ -116,6 +116,25 @@ function buildTasks() {
       return;
     }
 
+    // 1.5 货发出去很久没签收
+    const shipped = (S.orders || []).filter((o) => Number(o.customer_id) === Number(c.id)
+      && !(o.status === 'done' || o.status === 'cancelled')
+      && (o.shipped_at || o.status === 'shipped'));
+    const stuckShip = shipped.filter((o) => {
+      const d = (typeof daysSinceShipped === 'function') ? daysSinceShipped(o) : 0;
+      return d !== null && d >= 7;
+    });
+    if (stuckShip.length) {
+      const worst = stuckShip.sort((a, b) => daysSinceShipped(b) - daysSinceShipped(a))[0];
+      const d = daysSinceShipped(worst);
+      out.push(Object.assign({}, base, {
+        kind: 'logistics', p: 1,
+        reason: (worst.code || '订单') + ' 发出去 ' + d + ' 天了还没签收',
+        action: '打物流电话问货在哪，别等客户来问',
+      }));
+      return;
+    }
+
     // 2. 报价发出去了没回音
     const stuck = st.sentQuotes.filter((q) => {
       const d = dnum(q.created_at);
@@ -125,7 +144,7 @@ function buildTasks() {
       const q = stuck[stuck.length - 1];
       const days = Math.round((now - dnum(q.created_at)) / 86400000);
       out.push(Object.assign({}, base, {
-        kind: 'quote', p: 1,
+        kind: 'quote', p: 2,
         reason: '报价发出去 ' + days + ' 天了还没回音（¥' + fmt(q.total_price) + '）',
         action: '一句话跟进：方案哪里不满意？',
       }));
@@ -135,7 +154,7 @@ function buildTasks() {
     // 3. 快流失
     if (idle !== null && ((st.grade === 'A' && idle >= 45) || (st.grade === 'B' && idle >= 75))) {
       out.push(Object.assign({}, base, {
-        kind: 'churn', p: 2,
+        kind: 'churn', p: 3,
         reason: idle + ' 天没联系了（' + (st.grade === 'A' ? 'A 类大客户' : 'B 类客户') + '）',
         action: '别直接问要不要货，先发个新品/案例',
       }));
@@ -145,7 +164,7 @@ function buildTasks() {
     // 4. 该复购
     if (st.orderCount > 0 && idle !== null && idle >= 90) {
       out.push(Object.assign({}, base, {
-        kind: 'repeat', p: 3,
+        kind: 'repeat', p: 4,
         reason: '上次成交是 ' + idle + ' 天前（累计 ¥' + fmt(st.won) + '）',
         action: '该问问下次活动什么时候',
       }));
@@ -155,7 +174,7 @@ function buildTasks() {
     // 5. 活动临近
     if (ev && ev.days <= ev.lead && idle !== null && idle >= 10) {
       out.push(Object.assign({}, base, {
-        kind: 'event', p: 4,
+        kind: 'event', p: 5,
         reason: '距离「' + ev.name + '」还有 ' + ev.days + ' 天',
         action: '提前把方案和效果图给他',
       }));
@@ -165,7 +184,7 @@ function buildTasks() {
     // 6. 卡在跟进阶段
     if ((c.stage === '待报价' || c.stage === '待发方案') && idle !== null && idle >= 7) {
       out.push(Object.assign({}, base, {
-        kind: 'stage', p: 5,
+        kind: 'stage', p: 6,
         reason: '卡在「' + c.stage + '」' + idle + ' 天了',
         action: '把方案/报价推过去',
       }));
@@ -176,7 +195,7 @@ function buildTasks() {
 }
 
 const TASK_LABEL = {
-  money: '收款', quote: '报价跟进', churn: '快流失',
+  money: '收款', logistics: '物流', quote: '报价跟进', churn: '快流失',
   repeat: '该复购', event: '活动临近', stage: '推进',
 };
 
