@@ -386,3 +386,9 @@ td.num, th.num{text-align:right; font-variant-numeric:tabular-nums}
 
   .nav-btn{padding:7px 10px;font-size:12.5px}
 }
+
+/* 手机上收起品牌名，六个菜单才排得下 */
+@media (max-width:760px){
+  .brand-name{display:none}
+  .brand{gap:6px}
+}
