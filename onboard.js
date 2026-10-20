@@ -59,26 +59,37 @@ function onboardHtml() {
       '<div class="onb-sub">以后想再看，去「数据」页点「重看开工清单」。</div></div>';
   }
 
+  const firstOpen = steps.findIndex((x) => !x.ok);
   const rows = steps.map((s, i) =>
-    '<div class="g-step ' + (s.ok ? 'done' : '') + '">' +
+    '<div class="g-step ' + (s.ok ? 'done' : '') + (i === firstOpen ? ' cur' : '') + '">' +
       '<div class="gs-mark">' + (s.ok ? '✓' : (i + 1)) + '</div>' +
       '<div class="gs-body"><div class="gs-title">' + s.title + '</div>' +
       '<div class="gs-text">' + s.text + '</div></div>' +
       (s.ok ? '' : '<button class="btn sm" data-act="' + s.act + '">' + s.btn + '</button>') +
     '</div>').join('');
 
-  return '<div class="onb-card">' +
+  return '<div class="onb-card" id="onbCard">' +
     '<div class="onb-head"><b>开工清单</b>' +
       '<span class="onb-prog">' + doneCount + ' / ' + steps.length + ' 完成</span></div>' +
     '<div class="onb-sub">照着做完这五步，这套系统就算跑通了。做完一步自动打勾。</div>' +
     rows +
-    '<div class="onb-foot"><button class="btn sm ghost" data-act="dismiss-onboard">先跳过，我知道怎么用</button></div>' +
+    '<div class="onb-foot">' +
+      '<button class="btn sm ghost" data-act="toggle-onboard" id="onbMore">还差 ' + (steps.length - doneCount) + ' 步，看全部</button>' +
+      '<button class="btn sm ghost" data-act="dismiss-onboard">先跳过</button>' +
+    '</div>' +
   '</div>';
 }
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
+  if (el.dataset.act === 'toggle-onboard') {
+    const card = document.getElementById('onbCard');
+    if (!card) return;
+    const open = card.classList.toggle('open');
+    el.textContent = open ? '收起' : '还差 ' + onboardSteps().filter((x) => !x.ok).length + ' 步，看全部';
+    return;
+  }
   if (el.dataset.act === 'dismiss-onboard') { dismissOnboard(); return; }
   if (el.dataset.act === 'show-onboard') { showOnboardAgain(); return; }
 });
