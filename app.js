@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [],
+  orders: [], payments: [], pools: [], poolItems: [],
   view: 'customers', q: '',
 };
 
@@ -45,6 +45,7 @@ const TAB = {
   suppliers: 'gift_suppliers', products: 'gift_products', skus: 'gift_skus',
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
   orders: 'gift_orders', payments: 'gift_payments',
+  pools: 'gift_pools', poolItems: 'gift_pool_items',
 };
 let SESSION = null;
 
@@ -156,40 +157,73 @@ function sanitize(body) {
 
 function n(v) { const x = Number(v); return isNaN(x) ? 0 : x; }
 
-async function loadAll() {
-  const res = await Promise.all([
-    rest('suppliers', '?select=*&order=id'),
-    rest('products', '?select=*&order=id'),
-    rest('skus', '?select=*&order=id'),
-    rest('customers', '?select=*&order=id'),
-    rest('followups', '?select=*&order=id'),
-    rest('quotes', '?select=*&order=id.desc&limit=200'),
-    rest('orders', '?select=*&order=id.desc&limit=300'),
-    rest('payments', '?select=*&order=id'),
-  ]);
-  const skus = res[2] || [];
-  const customers = res[3] || [];
-  // Postgres 的 numeric 回来是字符串，统一转成数字，不然报价会算错
-  skus.forEach((s) => {
-    s.cost = n(s.cost); s.price300 = n(s.price300); s.price1000 = n(s.price1000);
-    s.moq = n(s.moq); s.lead_days = n(s.lead_days);
+async function rpcAll() {
+  const tk = await token();
+  const r = await fetch(SUPA.url + '/rest/v1/rpc/gift_snapshot', {
+    method: 'POST',
+    headers: { apikey: SUPA.key, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+    body: '{}',
   });
-  customers.forEach((c) => { c.budget = n(c.budget); });
-  (res[5] || []).forEach((q) => {
-    q.total_cost = n(q.total_cost); q.total_price = n(q.total_price); q.markup = n(q.markup);
-  });
+  if (r.status === 401) { await refreshSession(); return rpcAll(); }
+  const txt = await r.text();
+  let d = null;
+  try { d = txt ? JSON.parse(txt) : null; } catch (e) { d = null; }
+  if (!r.ok || !d) throw new Error((d && (d.message || d.hint)) || ('读取失败 ' + r.status));
+  return d;
+}
 
-  S.suppliers = res[0] || [];
-  S.products = res[1] || [];
-  S.skus = skus;
-  S.customers = customers;
-  S.followups = res[4] || [];
-  S.quotes = res[5] || [];
-  S.orders = (res[6] || []).map((o) => {
-    o.total_cost = n(o.total_cost); o.total_price = n(o.total_price); o.freight = n(o.freight);
-    return o;
+// 一次拿全部（快）；失败就退回逐表拉（稳）
+async function loadAll() {
+  let d;
+  try {
+    d = await rpcAll();
+  } catch (err) {
+    console.warn('快照接口不可用，改用逐表读取', err);
+    const res = await Promise.all([
+      rest('suppliers', '?select=*&order=id'),
+      rest('products', '?select=*&order=id'),
+      rest('skus', '?select=*&order=id'),
+      rest('customers', '?select=*&order=id'),
+      rest('followups', '?select=*&order=id'),
+      rest('quotes', '?select=*&order=id.desc&limit=200'),
+      rest('orders', '?select=*&order=id.desc&limit=300'),
+      rest('payments', '?select=*&order=id'),
+      rest('pools', '?select=*&order=id'),
+      rest('poolItems', '?select=*&order=id'),
+    ]);
+    d = {
+      suppliers: res[0], products: res[1], skus: res[2], customers: res[3],
+      followups: res[4], quotes: res[5], orders: res[6], payments: res[7],
+      pools: res[8], poolItems: res[9],
+    };
+  }
+
+  // Postgres 的 numeric 回来是字符串，统一转成数字，不然报价会算错
+  (d.skus || []).forEach((x) => {
+    x.cost = n(x.cost); x.price300 = n(x.price300); x.price1000 = n(x.price1000);
+    x.moq = n(x.moq); x.lead_days = n(x.lead_days);
   });
-  S.payments = (res[7] || []).map((p) => { p.amount = n(p.amount); return p; });
+  (d.customers || []).forEach((x) => { x.budget = n(x.budget); });
+  (d.quotes || []).forEach((x) => {
+    x.total_cost = n(x.total_cost); x.total_price = n(x.total_price); x.markup = n(x.markup);
+  });
+  (d.orders || []).forEach((x) => {
+    x.total_cost = n(x.total_cost); x.total_price = n(x.total_price); x.freight = n(x.freight);
+  });
+  (d.payments || []).forEach((x) => { x.amount = n(x.amount); });
+  (d.pools || []).forEach((x) => { x.target_qty = n(x.target_qty); });
+  (d.poolItems || []).forEach((x) => { x.qty = n(x.qty); });
+
+  S.suppliers = d.suppliers || [];
+  S.products = d.products || [];
+  S.skus = d.skus || [];
+  S.customers = d.customers || [];
+  S.followups = d.followups || [];
+  S.quotes = d.quotes || [];
+  S.orders = d.orders || [];
+  S.payments = d.payments || [];
+  S.pools = d.pools || [];
+  S.poolItems = d.poolItems || [];
   updateCounts();
 }
 
@@ -199,6 +233,8 @@ function updateCounts() {
   $('#cntSuppliers').textContent = S.suppliers.length;
   const co = $('#cntOrders');
   if (co) co.textContent = (S.orders || []).length;
+  const cp = $('#cntPools');
+  if (cp) cp.textContent = (S.pools || []).filter((x) => x.status === 'open').length;
 }
 
 async function save(table, id, body) {
@@ -313,7 +349,7 @@ function setView(view, customerId) {
 function applyHash() {
   const raw = (location.hash || '').replace(/^#/, '');
   const parts = raw.split('/');
-  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'data'];
+  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
 }
@@ -338,6 +374,8 @@ function topActions() {
     box.innerHTML = '<button class="btn" data-act="go-customers">去客户页</button>';
   } else if (S.view === 'orders') {
     box.innerHTML = '<button class="btn primary" data-act="go-quote">+ 新建报价</button>';
+  } else if (S.view === 'pools') {
+    box.innerHTML = '<button class="btn primary" data-act="add-pool">+ 建一个拼单</button>';
   } else {
     box.innerHTML = '';
   }
@@ -346,6 +384,7 @@ function topActions() {
 function render() {
   topActions();
   if (S.view === 'orders' && typeof window.renderOrders === 'function') return window.renderOrders();
+  if (S.view === 'pools' && typeof window.renderPools === 'function') return window.renderPools();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
 }
