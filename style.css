@@ -929,3 +929,22 @@ body.share-mode .drawer,body.share-mode .drawer-mask,body.share-mode #modalMask{
   .pool-stats .stat span{font-size:10.5px}
   .pc-act .btn{flex:1;min-width:0}
 }
+
+/* ---------- 系统自检 ---------- */
+.sc-intro{font-size:13px;line-height:1.9;color:#4a3d32}
+.sc-sum{font-size:14px;font-weight:700;margin-bottom:10px}
+.sc-sum.ok{color:#2f5d50}
+.sc-sum.bad{color:#b03a2e}
+.sc-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line2)}
+.sc-row:last-of-type{border-bottom:none}
+.sc-mark{width:20px;flex:none;text-align:center;font-size:14px;color:#b8a794}
+.sc-row.ok .sc-mark{color:#2f5d50;font-weight:700}
+.sc-row.bad .sc-mark{color:#b03a2e;font-weight:700}
+.sc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sc-body b{font-size:13.5px;font-weight:600}
+.sc-hint{font-size:12px;color:var(--sub);line-height:1.6}
+.sc-row.bad .sc-hint{color:#b03a2e}
+.sc-ms{font-size:11px;color:#a08e7a;flex:none}
+@media (max-width:760px){
+  .sc-ms{display:none}
+}

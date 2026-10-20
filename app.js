@@ -1111,6 +1111,10 @@ function renderData() {
     $('#view').innerHTML = tabs + window.renderTrash();
     return;
   }
+  if (tab === 'selfcheck' && typeof window.renderSelfCheck === 'function') {
+    $('#view').innerHTML = tabs + window.renderSelfCheck();
+    return;
+  }
   if (tab === 'import' && typeof window.renderImport === 'function') {
     $('#view').innerHTML = tabs + window.renderImport();
     return;
