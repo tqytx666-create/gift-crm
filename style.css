@@ -800,3 +800,32 @@ td.down{color:var(--ok);font-weight:600}
 
 /* 对账单日期列不要折行 */
 .sheet .sh-table td:first-child{white-space:nowrap}
+
+/* ---------- 月度经营小结 ---------- */
+.rp-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid #ddd2c1;border-radius:8px;overflow:hidden;margin:14px 0}
+.rp-cell{padding:12px 14px;border-right:1px solid #ddd2c1}
+.rp-cell:last-child{border-right:none}
+.rp-cell span{display:block;font-size:11px;color:#7a6b5c;margin-bottom:4px}
+.rp-cell b{font-size:20px;font-variant-numeric:tabular-nums}
+.rp-kpi.small .rp-cell b{font-size:15px}
+.rp-cell b.ok{color:#2f5d50}
+.rp-cell b.warn{color:#b03a2e}
+.rp-say{background:#faf6ef;border-left:3px solid #a2532f;border-radius:0 6px 6px 0;padding:10px 16px;margin:14px 0}
+.rp-say h3{margin:0 0 6px;font-size:12.5px;color:#4a3d32}
+.rp-say ul{margin:0;padding-left:18px;font-size:12px;line-height:1.95;color:#4a3d32}
+.rp-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}
+.rp-col h3{font-size:12.5px;font-weight:700;margin:0 0 7px;color:#4a3d32}
+.rp-empty{font-size:12px;color:#8a7a68;margin:0}
+.rp-bar{height:8px;background:#efe7da;border-radius:99px;overflow:hidden}
+.rp-bar i{display:block;height:100%;background:linear-gradient(90deg,#c47a4f,#a2532f);border-radius:99px}
+.rp-two .sh-table td{padding:6px 8px;font-size:11.5px}
+
+@media (max-width:760px){
+  .rp-kpi{grid-template-columns:repeat(2,1fr)}
+  .rp-cell:nth-child(2){border-right:none}
+  .rp-two{grid-template-columns:1fr}
+}
+@media print{
+  .rp-two{page-break-inside:avoid}
+  .rp-kpi{page-break-inside:avoid}
+}
