@@ -2,6 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
+  orders: [], payments: [],
   view: 'customers', q: '',
 };
 
@@ -43,6 +44,7 @@ const SUPA = {
 const TAB = {
   suppliers: 'gift_suppliers', products: 'gift_products', skus: 'gift_skus',
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
+  orders: 'gift_orders', payments: 'gift_payments',
 };
 let SESSION = null;
 
@@ -57,6 +59,13 @@ function storeSession(s) {
   } catch (e) { /* 隐私模式 */ }
 }
 
+function normalizeAccount(raw) {
+  let v = String(raw || '').trim().toLowerCase();
+  if (!v) return '';
+  if (v.indexOf('@') < 0) v += '@gift.local';
+  return v;
+}
+
 async function login(email, password) {
   const r = await fetch(SUPA.url + '/auth/v1/token?grant_type=password', {
     method: 'POST',
@@ -67,6 +76,7 @@ async function login(email, password) {
   if (!r.ok) throw new Error(d.error_description || d.msg || d.message || '账号或密码不对');
   storeSession({
     email: email,
+    account: email.split('@')[0],
     access_token: d.access_token,
     refresh_token: d.refresh_token,
     exp: Date.now() + (d.expires_in || 3600) * 1000,
@@ -89,6 +99,7 @@ async function refreshSession() {
   }
   storeSession({
     email: SESSION.email,
+    account: SESSION.account || (SESSION.email || '').split('@')[0],
     access_token: d.access_token,
     refresh_token: d.refresh_token,
     exp: Date.now() + (d.expires_in || 3600) * 1000,
@@ -153,6 +164,8 @@ async function loadAll() {
     rest('customers', '?select=*&order=id'),
     rest('followups', '?select=*&order=id'),
     rest('quotes', '?select=*&order=id.desc&limit=200'),
+    rest('orders', '?select=*&order=id.desc&limit=300'),
+    rest('payments', '?select=*&order=id'),
   ]);
   const skus = res[2] || [];
   const customers = res[3] || [];
@@ -172,6 +185,11 @@ async function loadAll() {
   S.customers = customers;
   S.followups = res[4] || [];
   S.quotes = res[5] || [];
+  S.orders = (res[6] || []).map((o) => {
+    o.total_cost = n(o.total_cost); o.total_price = n(o.total_price); o.freight = n(o.freight);
+    return o;
+  });
+  S.payments = (res[7] || []).map((p) => { p.amount = n(p.amount); return p; });
   updateCounts();
 }
 
@@ -179,6 +197,8 @@ function updateCounts() {
   $('#cntCustomers').textContent = S.customers.length;
   $('#cntSkus').textContent = S.skus.length;
   $('#cntSuppliers').textContent = S.suppliers.length;
+  const co = $('#cntOrders');
+  if (co) co.textContent = (S.orders || []).length;
 }
 
 async function save(table, id, body) {
@@ -293,7 +313,7 @@ function setView(view, customerId) {
 function applyHash() {
   const raw = (location.hash || '').replace(/^#/, '');
   const parts = raw.split('/');
-  const ok = ['customers', 'products', 'suppliers', 'quote', 'data'];
+  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
 }
@@ -316,6 +336,8 @@ function topActions() {
     box.innerHTML = '<button class="btn primary" data-act="add-supplier">+ 新增厂家</button>';
   } else if (S.view === 'quote') {
     box.innerHTML = '<button class="btn" data-act="go-customers">去客户页</button>';
+  } else if (S.view === 'orders') {
+    box.innerHTML = '<button class="btn primary" data-act="go-quote">+ 新建报价</button>';
   } else {
     box.innerHTML = '';
   }
@@ -323,6 +345,7 @@ function topActions() {
 
 function render() {
   topActions();
+  if (S.view === 'orders' && typeof window.renderOrders === 'function') return window.renderOrders();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
 }
@@ -605,7 +628,7 @@ function renderQuote() {
         '</div>' +
         '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">' +
           '<button class="btn primary" id="copyQuote">复制报价文字</button>' +
-          '<button class="btn" id="saveQuote">存起来</button>' +
+          '<button class="btn" id="saveQuote">存成报价单</button>' +
           '<button class="btn ghost" id="clearQuote">清空</button>' +
         '</div>' +
         '<div class="hint" style="margin-top:10px">数量到 300 / 1000 会自动取阶梯价。运费不含在里面。</div>' +
@@ -688,16 +711,14 @@ function renderQuote() {
 
   $('#saveQuote').onclick = async () => {
     if (!Q.items.length || !Q.result) return toast('先加商品');
-    await save('quotes', 0, {
-      customer_id: Q.customerId || 0,
-      title: (cust ? cust.company : '未选客户') + ' · ' + new Date().toLocaleDateString('zh-CN'),
-      markup: Q.markup,
-      items_json: JSON.stringify(Q.result.detail),
-      total_cost: Q.result.total_cost,
-      total_price: Q.result.total_price,
-      note: '',
-    });
-    toast('报价单已存');
+    try {
+      await saveQuoteAsRecord(Q.result, cust, Q.markup);
+      OS.tab = 'quotes';
+      location.hash = '#orders';
+      toast('已存成报价单');
+    } catch (err) {
+      toast('保存失败：' + err.message);
+    }
   };
 
   $('#clearQuote').onclick = () => { VS.quote.items = []; VS.quote.result = null; renderQuote(); };
@@ -975,6 +996,10 @@ document.addEventListener('click', async (e) => {
     location.hash = '#customers';
     return;
   }
+  if (act === 'go-quote') {
+    location.hash = '#quote';
+    return;
+  }
 
   if (act === 'backup') return exportBackup();
   if (act === 'csv') return exportCsv();
@@ -1015,7 +1040,7 @@ async function doLogin(e) {
   btn.disabled = true;
   btn.textContent = '登录中…';
   try {
-    await login($('#loginEmail').value.trim(), $('#loginPass').value);
+    await login(normalizeAccount($('#loginEmail').value), $('#loginPass').value);
     await loadAll();
     $('#login').classList.remove('on');
     $('#savedTip').textContent = '数据存在云端';
@@ -1032,7 +1057,9 @@ async function boot() {
   loadSession();
   const form = $('#loginForm');
   if (form) form.addEventListener('submit', doLogin);
-  if (SESSION && SESSION.email) $('#loginEmail').value = SESSION.email;
+  if (SESSION && (SESSION.account || SESSION.email)) {
+    $('#loginEmail').value = SESSION.account || SESSION.email;
+  }
 
   const out = $('#logoutBtn');
   if (out) {
