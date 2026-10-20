@@ -642,6 +642,14 @@ function openCustomer(id) {
       kv('进店礼预算', c.budget ? c.budget + ' 元' : '') +
       kv('来源', c.source) +
       kv('阶段', c.stage) + kv('最近联系', c.last_contact) +
+      kv('老板生日', c.birthday ? localDate(c.birthday) + (function () {
+        const d = (typeof daysToNextAnnual === 'function') ? daysToNextAnnual(c.birthday) : null;
+        return d !== null ? '（还有 ' + d + ' 天）' : '';
+      })() : '') +
+      kv(c.key_label || '重要日子', c.key_date ? localDate(c.key_date) + (function () {
+        const d = (typeof daysToNextAnnual === 'function') ? daysToNextAnnual(c.key_date) : null;
+        return d !== null ? '（还有 ' + d + ' 天）' : '';
+      })() : '') +
     '</div>' +
     (c.note ? '<div class="kv"><i>备注</i><b>' + esc(c.note) + '</b></div>' : '') +
 
@@ -1110,6 +1118,9 @@ function customerFields() {
     { key: 'stage', label: '阶段', type: 'select', options: STAGES },
     { key: 'source', label: '来源', type: 'select', options: [''].concat(SOURCES) },
     { key: 'last_contact', label: '最近联系', ph: '2026-10-20' },
+    { key: 'birthday', label: '老板生日', ph: '1988-03-15', hint: '只看月日，年份随便填' },
+    { key: 'key_date', label: '店庆 / 开业日', ph: '2020-09-01', hint: '每年这一天提前提醒你' },
+    { key: 'key_label', label: '这个日子叫什么', ph: '店庆 / 开业纪念 / 老板生日' },
     { key: 'logo_url', label: '客户 logo（报价单上会显示）', type: 'image', full: true },
     { key: 'note', label: '备注', type: 'textarea', full: true },
   ];

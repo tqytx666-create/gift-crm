@@ -41,6 +41,34 @@ function upcomingEvent() {
   return best;
 }
 
+/* ---------------- 关键日子 ---------------- */
+// 生日/店庆这种年年重复的，算出「还有几天」
+function daysToNextAnnual(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  let cand = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+  if (cand.getTime() < t0) cand = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate());
+  return Math.round((cand.getTime() - t0) / 86400000);
+}
+
+function keyDatesOf(c) {
+  const out = [];
+  if (c.birthday) {
+    const d = daysToNextAnnual(c.birthday);
+    if (d !== null) out.push({ kind: 'birthday', label: '生日', days: d, date: c.birthday });
+  }
+  if (c.key_date) {
+    const d = daysToNextAnnual(c.key_date);
+    if (d !== null) {
+      out.push({ kind: 'key', label: c.key_label || '重要日子', days: d, date: c.key_date });
+    }
+  }
+  return out.sort((a, b) => a.days - b.days);
+}
+
 /* ---------------- 客户画像 ---------------- */
 function custStats(cid) {
   const orders = (S.orders || []).filter(
@@ -135,6 +163,19 @@ function buildTasks() {
       return;
     }
 
+    // 1.8 快到生日 / 店庆了
+    const kd = keyDatesOf(c).filter((x) => x.days <= 10);
+    if (kd.length) {
+      const k = kd[0];
+      out.push(Object.assign({}, base, {
+        kind: 'keyday', p: 2,
+        reason: k.days === 0 ? ('今天就是' + (k.label === '生日' ? '他生日' : k.label))
+          : ('还有 ' + k.days + ' 天是' + k.label),
+        action: k.kind === 'birthday' ? '发个祝福，顺手提一句节日礼盒' : '提前问问今年怎么搞',
+      }));
+      return;
+    }
+
     // 2. 报价发出去了没回音
     const stuck = st.sentQuotes.filter((q) => {
       const d = dnum(q.created_at);
@@ -144,7 +185,7 @@ function buildTasks() {
       const q = stuck[stuck.length - 1];
       const days = Math.round((now - dnum(q.created_at)) / 86400000);
       out.push(Object.assign({}, base, {
-        kind: 'quote', p: 2,
+        kind: 'quote', p: 3,
         reason: '报价发出去 ' + days + ' 天了还没回音（¥' + fmt(q.total_price) + '）',
         action: '一句话跟进：方案哪里不满意？',
       }));
@@ -154,7 +195,7 @@ function buildTasks() {
     // 3. 快流失
     if (idle !== null && ((st.grade === 'A' && idle >= 45) || (st.grade === 'B' && idle >= 75))) {
       out.push(Object.assign({}, base, {
-        kind: 'churn', p: 3,
+        kind: 'churn', p: 4,
         reason: idle + ' 天没联系了（' + (st.grade === 'A' ? 'A 类大客户' : 'B 类客户') + '）',
         action: '别直接问要不要货，先发个新品/案例',
       }));
@@ -164,7 +205,7 @@ function buildTasks() {
     // 4. 该复购
     if (st.orderCount > 0 && idle !== null && idle >= 90) {
       out.push(Object.assign({}, base, {
-        kind: 'repeat', p: 4,
+        kind: 'repeat', p: 5,
         reason: '上次成交是 ' + idle + ' 天前（累计 ¥' + fmt(st.won) + '）',
         action: '该问问下次活动什么时候',
       }));
@@ -174,7 +215,7 @@ function buildTasks() {
     // 5. 活动临近
     if (ev && ev.days <= ev.lead && idle !== null && idle >= 10) {
       out.push(Object.assign({}, base, {
-        kind: 'event', p: 5,
+        kind: 'event', p: 6,
         reason: '距离「' + ev.name + '」还有 ' + ev.days + ' 天',
         action: '提前把方案和效果图给他',
       }));
@@ -184,7 +225,7 @@ function buildTasks() {
     // 6. 卡在跟进阶段
     if ((c.stage === '待报价' || c.stage === '待发方案') && idle !== null && idle >= 7) {
       out.push(Object.assign({}, base, {
-        kind: 'stage', p: 6,
+        kind: 'stage', p: 7,
         reason: '卡在「' + c.stage + '」' + idle + ' 天了',
         action: '把方案/报价推过去',
       }));
@@ -195,8 +236,8 @@ function buildTasks() {
 }
 
 const TASK_LABEL = {
-  money: '收款', logistics: '物流', quote: '报价跟进', churn: '快流失',
-  repeat: '该复购', event: '活动临近', stage: '推进',
+  money: '收款', logistics: '物流', keyday: '日子', quote: '报价跟进',
+  churn: '快流失', repeat: '该复购', event: '活动临近', stage: '推进',
 };
 
 /* ---------------- 页面 ---------------- */
