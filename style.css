@@ -860,3 +860,6 @@ body.share-mode .view{padding:18px 14px 40px}
 
 /* 分享页不要被抽屉/弹窗挡住 */
 body.share-mode .drawer,body.share-mode .drawer-mask,body.share-mode #modalMask{display:none !important}
+
+/* 分享记录卡片沿用物流卡片样式 */
+@media (max-width:760px){ .ship-card .sp-act .btn{ flex:1 } }

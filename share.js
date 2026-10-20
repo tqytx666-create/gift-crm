@@ -265,3 +265,92 @@ document.addEventListener('click', (e) => {
     makeShareLink(el.dataset.id).finally(() => { el.disabled = false; });
   }
 });
+
+/* ---------------- 分享记录一览 ---------------- */
+function shareCustomer(s) {
+  if (s.kind === 'quote') {
+    const q = byId(S.quotes, s.ref_id);
+    return q ? (q.customer_name || custName(q.customer_id)) : (s.title || '报价');
+  }
+  const c = byId(S.customers, s.ref_id);
+  return (c && c.company) || (s.title || '方案');
+}
+
+function shareGroups() {
+  const list = (S.shares || []).slice()
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const groups = { unseen: [], seen: [], done: [] };
+  list.forEach((s) => {
+    const q = s.kind === 'quote' ? byId(S.quotes, s.ref_id) : null;
+    const won = q && q.status === 'won';
+    if (won) groups.done.push(s);
+    else if (!Number(s.views)) groups.unseen.push(s);
+    else groups.seen.push(s);
+  });
+  return groups;
+}
+
+function shareCard(s) {
+  const n = Number(s.views || 0);
+  const cls = n ? (s.kind === 'quote' ? '' : 'blue') : 'warn';
+  const when = n
+    ? '看过 ' + n + ' 次 · 最近 ' + localDate(s.last_viewed_at)
+    : '发出去了，还没点开';
+  return '<div class="ship-card ' + (n ? '' : 'warn') + '">' +
+    '<div class="sp-head"><b>' + esc(shareCustomer(s)) + '</b>' +
+      '<span class="tag ' + (s.kind === 'quote' ? 'blue' : '') + '">' +
+      (s.kind === 'quote' ? '报价单' : '活动方案') + '</span></div>' +
+    '<div class="sp-line muted">' + esc(localDate(s.created_at)) + ' 发的　·　' + esc(when) + '</div>' +
+    '<div class="sp-act">' +
+      '<button class="btn sm" data-act="copy-share" data-token="' + esc(s.token) + '">复制链接</button>' +
+      (s.kind === 'quote'
+        ? '<button class="btn sm" data-act="open-quote" data-id="' + s.ref_id + '">看报价单</button>'
+        : '<button class="btn sm" data-act="open-customer" data-id="' + s.ref_id + '">看客户</button>') +
+      '<button class="btn sm" data-act="open-share" data-token="' + esc(s.token) + '">自己预览</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function sharePanel() {
+  const g = shareGroups();
+  const total = g.unseen.length + g.seen.length + g.done.length;
+
+  const block = (title, hint, arr) => arr.length
+    ? '<div class="section-title">' + title + ' <span class="muted small">' + arr.length + ' 份</span></div>' +
+      (hint ? '<div class="hint" style="margin:0 0 10px">' + hint + '</div>' : '') +
+      '<div class="ship-list" style="margin-bottom:16px">' + arr.map(shareCard).join('') + '</div>'
+    : '';
+
+  if (!total) {
+    return '<div class="table-wrap"><div class="empty">还没发过分享链接。<br>' +
+      '<span class="small muted">在报价单或方案页点「分享给客户」，这里就会记下发给了谁、看没看。</span></div></div>';
+  }
+
+  return '<div class="cards" style="grid-template-columns:repeat(3,1fr)">' +
+      '<div class="stat"><b>' + total + '</b><span>发出去的</span></div>' +
+      '<div class="stat ' + (g.unseen.length ? 'warn' : '') + '"><b>' + g.unseen.length + '</b><span>还没点开</span></div>' +
+      '<div class="stat ok"><b>' + g.done.length + '</b><span>已经成交</span></div>' +
+    '</div>' +
+    block('发了没点开', '两天以上还没点开的，别再等微信了，直接打个电话。', g.unseen) +
+    block('看了还没回音', '点开过的说明在认真看，这时候问一句「哪里要调」最容易推进。', g.seen) +
+    block('已经成交', '', g.done);
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === 'copy-share') {
+    const url = location.origin + location.pathname + '#share/' + el.dataset.token;
+    copyText(url, '链接已复制，直接发微信给客户');
+    return;
+  }
+  if (act === 'open-share') {
+    const win = window.open(location.origin + location.pathname + '#share/' + el.dataset.token, '_blank');
+    if (!win) toast('浏览器拦住了新窗口');
+    return;
+  }
+});
+
+window.sharePanel = sharePanel;
+window.shareGroups = shareGroups;

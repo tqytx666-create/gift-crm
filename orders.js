@@ -71,6 +71,9 @@ function renderOrders() {
     ['orders', '订单', orders.length],
     ['pay', '收款', ''],
     ['ship', '物流', shipList.length],
+    ['share', '分享', (typeof shareGroups === 'function')
+      ? (function () { const g = shareGroups(); return g.unseen.length + g.seen.length + g.done.length; })()
+      : ''],
   ];
   const segHtml = '<div class="seg">' + tabs.map((t) =>
     '<button data-otab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] +
@@ -80,6 +83,7 @@ function renderOrders() {
   if (tab === 'quotes') body = quotesPanel(quotes);
   else if (tab === 'orders') body = ordersPanel(orders);
   else if (tab === 'ship') body = shipPanel(orders);
+  else if (tab === 'share') body = (typeof sharePanel === 'function') ? sharePanel() : '';
   else body = payPanel(orders);
 
   $('#view').innerHTML =
