@@ -867,6 +867,9 @@ function renderData() {
         '<li>CSV 可以用 Excel 打开，发给别人不怕格式乱。</li>' +
         '<li>换手机、换电脑，同一个账号登进去就是同一份数据。</li>' +
       '</ul>' +
+      '<div class="section-title">登录</div>' +
+      '<p class="small muted" style="margin-top:0">换手机、换人用，退出后重新登录就行。账号 `lipin`，密码忘了找南哥。</p>' +
+      '<button class="btn" data-act="logout" style="margin-top:6px">退出登录</button>' +
       '<div class="section-title">示例数据</div>' +
       '<p class="small muted">第一次打开时放了几条示例（3 个厂、12 个品、5 个客户），方便看格式。真正开始用之前建议清掉。</p>' +
       '<button class="btn danger" data-act="wipe" style="margin-top:6px">清空所有示例数据</button>' +
@@ -1001,6 +1004,12 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (act === 'logout') {
+    if (!confirm('退出登录？')) return;
+    storeSession(null);
+    location.reload();
+    return;
+  }
   if (act === 'backup') return exportBackup();
   if (act === 'csv') return exportCsv();
   if (act === 'wipe') {

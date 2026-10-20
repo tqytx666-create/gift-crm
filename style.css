@@ -392,3 +392,7 @@ td.num, th.num{text-align:right; font-variant-numeric:tabular-nums}
   .brand-name{display:none}
   .brand{gap:6px}
 }
+
+@media (max-width:760px){
+  .rail-foot{display:none}
+}
