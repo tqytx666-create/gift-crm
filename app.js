@@ -1099,6 +1099,10 @@ function renderData() {
     $('#view').innerHTML = tabs + window.renderTrash();
     return;
   }
+  if (tab === 'import' && typeof window.renderImport === 'function') {
+    $('#view').innerHTML = tabs + window.renderImport();
+    return;
+  }
   $('#view').innerHTML = tabs + (typeof window.guideHtml === 'function' ? window.guideHtml() : '');
 }
 

@@ -134,7 +134,7 @@ function renderTrash() {
 
 function trashTabsHtml() {
   const t = (window.DATA || {}).tab || 'guide';
-  const items = [['guide', '使用说明'], ['health', '数据体检'], ['trash', '回收站']];
+  const items = [['guide', '使用说明'], ['health', '数据体检'], ['import', '导入'], ['trash', '回收站']];
   return '<div class="seg">' + items.map(([k, label]) =>
     '<button data-dtab="' + k + '" class="' + (t === k ? 'on' : '') + '">' + label + '</button>').join('') + '</div>';
 }
