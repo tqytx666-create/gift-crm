@@ -506,3 +506,50 @@ body.print-mode .rail,body.print-mode .topbar{display:none}
 
 /* 打印模式下抽屉和遮罩都不显示 */
 body.print-mode .drawer,body.print-mode .drawer-mask,body.print-mode #modalMask{display:none !important}
+
+/* ---------- 第 4 期：待办 / 客户经营 ---------- */
+.grade{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:6px;font-size:11.5px;font-weight:700;margin-right:6px;vertical-align:1px}
+.grade.ga{background:#fbeae6;color:#a2532f}
+.grade.gb{background:#e9eef6;color:#3a5a86}
+.grade.gc{background:#f1ece3;color:#8a7a68}
+
+.ev-card{display:flex;justify-content:space-between;align-items:center;gap:14px;
+  background:linear-gradient(120deg,#fdf6ec,#f8efe0);border:1px solid #ecdfcb;
+  border-radius:13px;padding:15px 18px;margin-bottom:14px}
+.ev-card.hot{background:linear-gradient(120deg,#fdf0e8,#f9e3d5);border-color:#eccdb6}
+.ev-name{font-size:16px;font-weight:700;letter-spacing:.5px}
+.ev-tip{font-size:12px;color:var(--sub);margin-top:3px}
+.ev-days{text-align:center;flex:none}
+.ev-days b{display:block;font-size:30px;line-height:1;color:var(--brand);font-variant-numeric:tabular-nums}
+.ev-days span{font-size:11.5px;color:var(--sub)}
+
+.inbox-head{margin:2px 0 10px}
+.ih-title{font-size:17px;font-weight:600}
+.ih-title b{color:var(--brand);font-size:20px}
+.ih-sub{font-size:12px;color:var(--sub);margin-top:2px}
+
+.task-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.task-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:12px;padding:13px 16px}
+.task-card.money{border-left-color:#b03a2e}
+.task-card.quote{border-left-color:#a2532f}
+.task-card.churn{border-left-color:#b8860b}
+.task-card.repeat{border-left-color:#2f5d50}
+.task-card.event{border-left-color:#3a5a86}
+.task-card.stage{border-left-color:#c3b3a1}
+.tc-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tc-name{font-size:15px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-reason{font-size:13.5px;margin-top:7px;color:#3d3229}
+.tc-action{font-size:12.5px;color:var(--sub);margin-top:3px}
+.tc-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--line2);flex-wrap:wrap}
+.tc-meta{font-size:12px;color:var(--sub)}
+.tc-btns{display:flex;gap:6px;flex-wrap:wrap}
+
+@media (max-width:760px){
+  .ev-card{padding:13px 14px}
+  .ev-days b{font-size:24px}
+  .ev-name{font-size:15px}
+  .tc-name{font-size:14px;white-space:normal}
+  .tc-foot{flex-direction:column;align-items:flex-start}
+  .tc-btns{width:100%}
+  .tc-btns .btn{flex:1}
+}

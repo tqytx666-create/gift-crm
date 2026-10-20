@@ -236,6 +236,10 @@ function updateCounts() {
   if (co) co.textContent = (S.orders || []).length;
   const cp = $('#cntPools');
   if (cp) cp.textContent = (S.pools || []).filter((x) => x.status === 'open').length;
+  const ci = $('#cntInbox');
+  if (ci && typeof buildTasks === 'function') {
+    try { ci.textContent = buildTasks().length; } catch (e) { ci.textContent = ''; }
+  }
 }
 
 async function save(table, id, body) {
@@ -394,7 +398,7 @@ function applyHash() {
     window.showPrintQuote(Number(parts[2]));
     return;
   }
-  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'data'];
+  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'inbox', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
 }
@@ -408,7 +412,10 @@ $('#globalSearch').addEventListener('input', (e) => {
 /* ---------------- 渲染入口 ---------------- */
 function topActions() {
   const box = $('#topActions');
-  if (S.view === 'customers') {
+  if (S.view === 'inbox') {
+    box.innerHTML = '<button class="btn" data-act="go-pools">拼单</button>' +
+      '<button class="btn primary" data-act="go-customers">客户名单</button>';
+  } else if (S.view === 'customers') {
     box.innerHTML = '<button class="btn primary" data-act="add-customer">+ 新增客户</button>';
   } else if (S.view === 'products') {
     box.innerHTML = '<button class="btn" data-act="add-product">+ 新增产品</button>' +
@@ -430,6 +437,7 @@ function render() {
   topActions();
   if (S.view === 'orders' && typeof window.renderOrders === 'function') return window.renderOrders();
   if (S.view === 'pools' && typeof window.renderPools === 'function') return window.renderPools();
+  if (S.view === 'inbox' && typeof window.renderInbox === 'function') return window.renderInbox();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
 }
@@ -465,7 +473,8 @@ function renderCustomers() {
       '<td><div class="rowtitle">' + esc(c.company || '未命名') + '</div>' +
       (c.note ? '<div class="rowsub">' + esc(c.note.slice(0, 28)) + '</div>' : '') + '</td>' +
       '<td>' + dash(c.contact) + (c.salutation ? '<div class="rowsub">' + esc(c.salutation) + '</div>' : '') + '</td>' +
-      '<td>' + (c.brand ? '<span class="tag blue">' + esc(c.brand) + '</span>' : '<span class="muted">—</span>') +
+      '<td>' + (typeof gradeTag === 'function' ? gradeTag(custStats(c.id).grade) + ' ' : '') +
+      (c.brand ? '<span class="tag blue">' + esc(c.brand) + '</span>' : '<span class="muted">—</span>') +
       (same > 0 ? ' <span class="tag ok">可拼单 ' + same + '</span>' : '') + '</td>' +
       '<td>' + dash(c.city) + '</td>' +
       '<td class="num">' + (c.budget ? esc(c.budget) + ' 元' : '<span class="muted">—</span>') + '</td>' +
@@ -542,6 +551,21 @@ function openCustomer(id) {
       '<button class="btn sm danger" data-act="del-customer" data-id="' + c.id + '">删除</button>' +
     '</div>' +
 
+    (function () {
+      if (typeof custStats !== 'function') return '';
+      const st = custStats(c.id);
+      return '<div class="section-title">客户画像</div>' +
+        '<div class="field-grid">' +
+          kv('分级', st.grade + ' 类') +
+          kv('累计成交', st.won ? '¥' + fmt(st.won) : '还没成交') +
+          kv('成交单数', String(st.orderCount)) +
+          kv('平均单值', st.avgOrder ? '¥' + fmt(st.avgOrder) : '—') +
+          kv('待收', st.due ? '¥' + fmt(st.due) : '无') +
+          kv('报价次数', String(st.quotes)) +
+          kv('常买品类', st.topCats.join('、') || '—') +
+          kv('最近成交', st.lastOrder ? localDate(st.lastOrder) : '—') +
+        '</div>';
+    })() +
     '<div class="section-title">跟进记录 <span class="muted small">' + fus.length + ' 条</span></div>' +
     (fus.length ? '<div class="flist">' + fus.map((f) =>
       '<div class="fitem"><div class="fdate">' + esc(f.date) + (f.result ? ' · ' + esc(f.result) : '') + '</div>' +
@@ -1091,6 +1115,10 @@ document.addEventListener('click', async (e) => {
   }
   if (act === 'go-quote') {
     location.hash = '#quote';
+    return;
+  }
+  if (act === 'go-pools') {
+    location.hash = '#pools';
     return;
   }
 
