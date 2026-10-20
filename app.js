@@ -653,6 +653,12 @@ function openCustomer(id) {
       kv('进店礼预算', c.budget ? c.budget + ' 元' : '') +
       kv('来源', c.source) +
       kv('阶段', c.stage) + kv('最近联系', c.last_contact) +
+      kv('复购节奏', (function () {
+        const cyc = (typeof cycleOf === 'function') ? cycleOf(c.id) : null;
+        if (!cyc) return '';
+        return '约 ' + cyc.avg + ' 天一次 · 预计 ' + cyc.next +
+          (cyc.daysUntil > 0 ? '（还有 ' + cyc.daysUntil + ' 天）' : '（已过 ' + (-cyc.daysUntil) + ' 天）');
+      })()) +
       kv('老板生日', c.birthday ? localDate(c.birthday) + (function () {
         const d = (typeof daysToNextAnnual === 'function') ? daysToNextAnnual(c.birthday) : null;
         return d !== null ? '（还有 ' + d + ' 天）' : '';

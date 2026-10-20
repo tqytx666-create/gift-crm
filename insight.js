@@ -69,6 +69,39 @@ function keyDatesOf(c) {
   return out.sort((a, b) => a.days - b.days);
 }
 
+/* ---------------- 复购节奏 ---------------- */
+// 看他以前多久下一次单，推测下一次大概什么时候
+function cycleOf(cid) {
+  const list = (S.orders || [])
+    .filter((o) => Number(o.customer_id) === Number(cid) && o.status !== 'cancelled')
+    .map((o) => new Date(o.created_at))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => a - b);
+  if (list.length < 2) return null;
+
+  const gaps = [];
+  for (let i = 1; i < list.length; i++) {
+    const g = Math.round((list[i] - list[i - 1]) / 86400000);
+    if (g >= 7) gaps.push(g);
+  }
+  if (!gaps.length) return null;
+
+  const avg = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
+  const last = list[list.length - 1];
+  const next = new Date(last.getTime() + avg * 86400000);
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const daysUntil = Math.round((next.getTime() - t0) / 86400000);
+  const pad = (x) => String(x).padStart(2, '0');
+  return {
+    avg: avg,
+    orders: list.length,
+    last: last.getFullYear() + '-' + pad(last.getMonth() + 1) + '-' + pad(last.getDate()),
+    next: next.getFullYear() + '-' + pad(next.getMonth() + 1) + '-' + pad(next.getDate()),
+    daysUntil: daysUntil,
+  };
+}
+
 /* ---------------- 客户画像 ---------------- */
 function custStats(cid) {
   const orders = (S.orders || []).filter(
@@ -202,7 +235,20 @@ function buildTasks() {
       return;
     }
 
-    // 4. 该复购
+    // 4. 按他自己的节奏该复购了
+    const cyc = (typeof cycleOf === 'function') ? cycleOf(c.id) : null;
+    if (cyc && cyc.orders >= 2 && cyc.daysUntil <= 7) {
+      out.push(Object.assign({}, base, {
+        kind: 'repeat', p: 5,
+        reason: cyc.daysUntil <= 0
+          ? ('按他的节奏（约 ' + cyc.avg + ' 天一次）早就该下单了')
+          : ('按他的节奏（约 ' + cyc.avg + ' 天一次），还有 ' + cyc.daysUntil + ' 天到点'),
+        action: '照上次的单再问一遍，顺便提这次的新品',
+      }));
+      return;
+    }
+
+    // 4.5 老规矩兜底：太久没下单
     if (st.orderCount > 0 && idle !== null && idle >= 90) {
       out.push(Object.assign({}, base, {
         kind: 'repeat', p: 5,
