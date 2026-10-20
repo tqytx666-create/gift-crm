@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [], samples: [],
+  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [], samples: [], templates: [],
   view: 'customers', q: '',
 };
 
@@ -46,6 +46,7 @@ const TAB = {
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
   orders: 'gift_orders', payments: 'gift_payments',
   pools: 'gift_pools', poolItems: 'gift_pool_items', samples: 'gift_samples',
+  templates: 'gift_templates',
   priceLogs: 'gift_price_logs',
 };
 let SESSION = null;
@@ -292,6 +293,10 @@ function hydrate(d) {
     x.old_cost = n(x.old_cost); x.new_cost = n(x.new_cost); return x;
   });
   S.samples = (d.samples || []).map((x) => { x.qty = n(x.qty); return x; });
+  S.templates = (d.templates || []).map((x) => {
+    x.total_cost = n(x.total_cost); x.total_price = n(x.total_price); x.used_count = n(x.used_count);
+    return x;
+  }).filter((x) => !x.deleted_at);
   updateCounts();
 }
 
@@ -850,6 +855,7 @@ function renderQuote() {
           (cust ? '<div class="small muted">' + esc(cust.company) + '　·　' + esc(cust.brand || '无品牌') +
             '　·　进店礼预算 ' + esc(cust.budget || '-') + ' 元　·　' + esc(cust.stage) + '</div>' : '') +
         '</div>' +
+        (typeof window.tplStripHtml === 'function' ? window.tplStripHtml() : '') +
         '<div class="panel">' +
           '<h4>2 · 加商品</h4>' +
           '<div class="picker">' +
