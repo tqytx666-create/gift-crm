@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [], samples: [], templates: [],
+  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [], samples: [], templates: [], scripts: [],
   view: 'customers', q: '',
 };
 
@@ -46,7 +46,7 @@ const TAB = {
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
   orders: 'gift_orders', payments: 'gift_payments',
   pools: 'gift_pools', poolItems: 'gift_pool_items', samples: 'gift_samples',
-  templates: 'gift_templates',
+  templates: 'gift_templates', scripts: 'gift_scripts',
   priceLogs: 'gift_price_logs',
 };
 let SESSION = null;
@@ -297,6 +297,8 @@ function hydrate(d) {
     x.total_cost = n(x.total_cost); x.total_price = n(x.total_price); x.used_count = n(x.used_count);
     return x;
   }).filter((x) => !x.deleted_at);
+  S.scripts = (d.scripts || []).map((x) => { x.used_count = n(x.used_count); return x; })
+    .filter((x) => !x.deleted_at);
   updateCounts();
 }
 
@@ -645,6 +647,7 @@ function openCustomer(id) {
     '<div style="display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap">' +
       '<button class="btn sm" data-act="edit-customer" data-id="' + c.id + '">编辑</button>' +
       '<button class="btn sm" data-act="followup" data-id="' + c.id + '">记跟进</button>' +
+      '<button class="btn sm" data-act="open-scripts" data-id="' + c.id + '">话术</button>' +
       '<button class="btn sm" data-act="proposal-for" data-id="' + c.id + '">做提案</button>' +
       '<button class="btn sm" data-act="quote-for" data-id="' + c.id + '">做报价</button>' +
       '<button class="btn sm danger" data-act="del-customer" data-id="' + c.id + '">删除</button>' +
@@ -1057,9 +1060,9 @@ function exportCsv() {
   toast('已导出');
 }
 
-function copyText(txt) {
+function copyText(txt, okMsg) {
   navigator.clipboard.writeText(txt).then(
-    () => toast('已复制，去微信粘贴'),
+    () => toast(okMsg || '已复制，去微信粘贴'),
     () => {
       const ta = document.createElement('textarea');
       ta.value = txt; document.body.appendChild(ta); ta.select();

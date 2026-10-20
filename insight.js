@@ -222,6 +222,7 @@ function renderInbox() {
           (c.city ? esc(c.city) : '') +
         '</span>' +
         '<span class="tc-btns">' +
+          '<button class="btn sm" data-act="open-scripts" data-id="' + c.id + '">话术</button>' +
           '<button class="btn sm" data-act="followup" data-id="' + c.id + '">记跟进</button>' +
           '<button class="btn sm" data-act="quote-for" data-id="' + c.id + '">做报价</button>' +
           '<button class="btn sm" data-act="open-customer" data-id="' + c.id + '">看客户</button>' +
