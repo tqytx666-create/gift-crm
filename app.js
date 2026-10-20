@@ -522,6 +522,7 @@ function topActions() {
     box.innerHTML = '<button class="btn primary" data-act="add-pool">+ 建一个拼单</button>';
   } else if (S.view === 'dashboard') {
     box.innerHTML = '<button class="btn" data-act="go-orders">看订单</button>' +
+      '<button class="btn" data-act="open-export">导出 Excel</button>' +
       '<button class="btn primary" data-act="open-report">出月度小结</button>';
   } else if (S.view === 'samples') {
     box.innerHTML = '<button class="btn primary" data-act="add-sample">+ 新建打样</button>';
