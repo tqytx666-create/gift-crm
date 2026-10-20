@@ -832,3 +832,31 @@ td.down{color:var(--ok);font-weight:600}
 
 /* 贴聊天的输入框大一点 */
 #modalForm textarea[name=raw]{min-height:110px}
+
+/* ---------- 客户分享页 ---------- */
+body.share-mode .rail,body.share-mode .topbar{display:none !important}
+body.share-mode{background:#f2efe9}
+body.share-mode .main{height:auto;overflow:visible}
+body.share-mode .view{padding:18px 14px 40px}
+.share-wrap{max-width:820px;margin:0 auto}
+.share-wrap .sheet{box-shadow:0 8px 30px rgba(60,45,30,.09)}
+.share-dead{background:#fff;border:1px solid var(--line);border-radius:12px;padding:48px 24px;text-align:center}
+.share-dead h2{margin:0 0 8px;font-size:18px}
+.share-dead p{margin:0;color:var(--sub);font-size:13px}
+.share-cta{margin-top:20px;background:#faf6ef;border-radius:10px;padding:14px 16px;text-align:center}
+.scta-t{font-size:13.5px;font-weight:600;margin-bottom:9px}
+.scta-b{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+.scta-btn{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;
+  padding:9px 20px;border-radius:9px;font-size:14px;font-weight:600}
+.scta-wx{font-size:12.5px;color:#6b5b4b}
+@media (max-width:760px){
+  body.share-mode .view{padding:12px 10px 30px}
+  .share-wrap .sheet{padding:20px 14px}
+  .share-cta{padding:12px}
+}
+@media print{
+  .share-cta{display:none}
+}
+
+/* 分享页不要被抽屉/弹窗挡住 */
+body.share-mode .drawer,body.share-mode .drawer-mask,body.share-mode #modalMask{display:none !important}

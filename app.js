@@ -481,6 +481,10 @@ function setView(view, customerId) {
 function applyHash() {
   const raw = (location.hash || '').replace(/^#/, '');
   const parts = raw.split('/');
+  if (parts[0] === 'share' && parts[1] && typeof window.showShare === 'function') {
+    window.showShare(parts[1]);
+    return;
+  }
   if (parts[0] === 'print' && parts[1] === 'quote' && typeof window.showPrintQuote === 'function') {
     window.showPrintQuote(Number(parts[2]));
     return;
@@ -1329,6 +1333,13 @@ async function doLogin(e) {
 }
 
 async function boot() {
+  // 客户点开的分享链接：不登录、不拉全库，只取这一份
+  const shareMatch = (location.hash || '').match(/^#share\/([A-Za-z0-9]+)/);
+  if (shareMatch) {
+    const tk = shareMatch[1];
+    setTimeout(() => { if (window.showShare) window.showShare(tk); }, 0);
+    return;
+  }
   loadSession();
   const form = $('#loginForm');
   if (form) form.addEventListener('submit', doLogin);
