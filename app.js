@@ -268,6 +268,7 @@ function openDrawer(title, html) {
 function closeDrawer() {
   $('#drawer').classList.remove('on');
   $('#drawerMask').classList.remove('on');
+  setTimeout(() => { $('#drawerBody').innerHTML = ''; }, 260);
 }
 $('#drawerClose').onclick = closeDrawer;
 $('#drawerMask').onclick = closeDrawer;
@@ -384,7 +385,7 @@ function renderCustomers() {
         brands.map((b) => '<option ' + (st.brand === b ? 'selected' : '') + '>' + esc(b) + '</option>').join('') + '</select>' +
       '<span class="muted small">' + list.length + ' 条</span>' +
     '</div>' +
-    '<div class="table-wrap"><table><thead><tr>' +
+    '<div class="table-wrap cust-list"><table><thead><tr>' +
       '<th>公司</th><th>联系人</th><th>品牌 / 拼单</th><th>城市</th><th class="num">进店礼预算</th><th>阶段</th><th>最近联系</th>' +
     '</tr></thead><tbody>' +
       (rows || '<tr><td colspan="7" class="empty">还没有客户。点右上角「+ 新增客户」开始录。</td></tr>') +
@@ -505,7 +506,7 @@ function renderProducts() {
         cats.map((c) => '<option ' + (st.category === c ? 'selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>' +
       '<span class="muted small">' + rows.length + ' 个规格</span>' +
     '</div>' +
-    '<div class="table-wrap"><table><thead><tr>' +
+    '<div class="table-wrap prod-list"><table><thead><tr>' +
       '<th>产品</th><th>规格</th><th>厂家</th><th class="num">成本</th><th class="num">300 套价</th>' +
       '<th class="num">1000 套价</th><th class="num">起订</th><th>印字</th>' +
     '</tr></thead><tbody>' +
