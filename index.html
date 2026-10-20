@@ -33,7 +33,6 @@
 
     <div class="rail-foot">
       <div class="tip" id="savedTip">正在连接…</div>
-      <button class="logout" id="logoutBtn">退出登录</button>
     </div>
   </aside>
 
@@ -73,7 +72,16 @@
 
 <div id="toast" class="toast"></div>
 
-<!-- 登录挡板 -->
+<!-- 启动中 -->
+<div id="boot" class="login on">
+  <div class="login-card" style="text-align:center">
+    <div class="login-logo">礼</div>
+    <h1>礼品管家</h1>
+    <p class="login-sub" id="bootMsg">正在进入…</p>
+  </div>
+</div>
+
+<!-- 登录挡板（只在自动进入失败时出现） -->
 <div id="login" class="login">
   <form id="loginForm" class="login-card">
     <div class="login-logo">礼</div>

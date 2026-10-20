@@ -867,9 +867,10 @@ function renderData() {
         '<li>CSV 可以用 Excel 打开，发给别人不怕格式乱。</li>' +
         '<li>换手机、换电脑，同一个账号登进去就是同一份数据。</li>' +
       '</ul>' +
-      '<div class="section-title">登录</div>' +
-      '<p class="small muted" style="margin-top:0">换手机、换人用，退出后重新登录就行。账号 `lipin`，密码忘了找南哥。</p>' +
-      '<button class="btn" data-act="logout" style="margin-top:6px">退出登录</button>' +
+      '<div class="section-title">谁能看到</div>' +
+      '<p class="small muted" style="margin-top:0">现在不设密码，<b>谁拿到网址谁就能进</b>。' +
+      '所以别把这个网址发到群里、朋友圈，也别做成公开的二维码。' +
+      '以后要加密码、或给员工单独开号，说一声就行。</p>' +
       '<div class="section-title">示例数据</div>' +
       '<p class="small muted">第一次打开时放了几条示例（3 个厂、12 个品、5 个客户），方便看格式。真正开始用之前建议清掉。</p>' +
       '<button class="btn danger" data-act="wipe" style="margin-top:6px">清空所有示例数据</button>' +
@@ -1042,18 +1043,34 @@ function showLogin(msg) {
   }
 }
 
+// 不弹登录：页面自己用内部账号进（只想少一步操作，不是真安全，见「数据」页说明）
+const AUTO_LOGIN = { email: 'lipin@gift.local', password: 'lipin888' };
+
+function hideBoot() {
+  const b = $('#boot');
+  if (b) b.classList.remove('on');
+}
+
+function afterLogin() {
+  hideBoot();
+  const lg = $('#login');
+  if (lg) lg.classList.remove('on');
+  const tip = $('#savedTip');
+  if (tip) tip.textContent = '数据存在云端';
+  applyHash();
+}
+
 async function doLogin(e) {
   e.preventDefault();
   const btn = $('#loginBtn');
+  if (!btn) return;
   $('#loginErr').textContent = '';
   btn.disabled = true;
   btn.textContent = '登录中…';
   try {
     await login(normalizeAccount($('#loginEmail').value), $('#loginPass').value);
     await loadAll();
-    $('#login').classList.remove('on');
-    $('#savedTip').textContent = '数据存在云端';
-    applyHash();
+    afterLogin();
   } catch (err) {
     $('#loginErr').textContent = err.message || '登录失败';
   } finally {
@@ -1070,27 +1087,31 @@ async function boot() {
     $('#loginEmail').value = SESSION.account || SESSION.email;
   }
 
-  const out = $('#logoutBtn');
-  if (out) {
-    out.onclick = () => {
-      if (!confirm('退出登录？')) return;
-      storeSession(null);
-      location.reload();
-    };
-  }
-
+  // 1) 上次登录还没过期，直接用
   if (SESSION) {
     try {
       await loadAll();
-      $('#savedTip').textContent = '数据存在云端';
-      applyHash();
+      afterLogin();
       return;
     } catch (err) {
       console.warn(err);
       storeSession(null);
     }
   }
-  showLogin();
+
+  // 2) 自动进
+  try {
+    await login(AUTO_LOGIN.email, AUTO_LOGIN.password);
+    await loadAll();
+    afterLogin();
+    return;
+  } catch (err) {
+    console.warn('自动进入失败', err);
+  }
+
+  // 3) 兜底：手动登录
+  hideBoot();
+  showLogin('自动进入失败，先手动登录一次');
 }
 
 boot();
