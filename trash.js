@@ -261,6 +261,11 @@ function guideHtml() {
       '</div>' +
     '</div>' +
 
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>新手引导</h4>' +
+      '<p class="g-p">第一次用、或者想复习一遍操作流程，可以把「开工清单」调回来。</p>' +
+      '<button class="btn" data-act="show-onboard" style="margin-top:6px">重看开工清单</button>' +
+    '</div>' +
     '<div class="panel">' +
       '<h4>谁能看到</h4>' +
       '<p class="g-p">现在不设密码，<b>谁拿到网址谁就能进</b>。所以别把网址发到群里、朋友圈，也别做成公开二维码。' +

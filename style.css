@@ -863,3 +863,19 @@ body.share-mode .drawer,body.share-mode .drawer-mask,body.share-mode #modalMask{
 
 /* 分享记录卡片沿用物流卡片样式 */
 @media (max-width:760px){ .ship-card .sp-act .btn{ flex:1 } }
+
+/* ---------- 开工清单 ---------- */
+.onb-card{background:linear-gradient(160deg,#fffdf9,#fbf6ee);border:1px solid #ecdfcb;
+  border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.onb-card.done{background:linear-gradient(160deg,#f2f8f4,#eaf4ee);border-color:#cfe4d6}
+.onb-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:15px}
+.onb-prog{font-size:12.5px;color:var(--brand);background:#fbeae6;padding:2px 10px;border-radius:99px}
+.onb-sub{font-size:12.5px;color:var(--sub);margin:4px 0 12px}
+.onb-foot{margin-top:12px;text-align:right}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--sub)}
+.btn.ghost:hover{background:#f2ece2;color:var(--ink);border-color:transparent}
+
+@media (max-width:760px){
+  .onb-card{padding:13px 14px}
+  .onb-head{font-size:14px;flex-wrap:wrap}
+}

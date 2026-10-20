@@ -292,6 +292,7 @@ function renderInbox() {
   }).join('');
 
   $('#view').innerHTML =
+    ((typeof window.onboardHtml === 'function') ? window.onboardHtml() : '') +
     evCard +
     '<div class="inbox-head">' +
       '<div class="ih-title">今天该联系 <b>' + tasks.length + '</b> 个人</div>' +
