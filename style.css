@@ -775,3 +775,28 @@ td.down{color:var(--ok);font-weight:600}
 @media (max-width:760px){
   .sp-act .btn{flex:1}
 }
+
+/* ---------- 对账单 ---------- */
+.sh-table td.red{color:#b03a2e;font-weight:600}
+.total-row td{background:#faf6ef;font-weight:700;border-top:2px solid #2b241d}
+.stmt-sec{margin-top:18px}
+.stmt-sec h3{font-size:13px;font-weight:700;margin:0 0 8px;color:#4a3d32}
+.stmt-total{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+  margin-top:16px;padding-top:12px;border-top:2px solid #2b241d}
+.st-left .st-upper{font-size:12px;color:#5c4a38;line-height:1.9}
+.st-left .st-upper.small{font-size:11.5px;color:#6b5b4b}
+.st-left b{color:#b03a2e}
+.st-right{text-align:right;white-space:nowrap}
+.st-right span{display:block;font-size:11.5px;color:#6b5b4b;margin-bottom:2px}
+.st-right b{font-size:21px;font-variant-numeric:tabular-nums}
+.stmt-memo{margin-top:14px;background:#faf6ef;border-left:3px solid #a2532f;
+  border-radius:0 6px 6px 0;padding:9px 13px;font-size:12px;color:#5c4a38}
+
+@media (max-width:760px){
+  .stmt-total{flex-direction:column;align-items:flex-start;gap:8px}
+  .st-right{text-align:left}
+  .st-right b{font-size:18px}
+}
+
+/* 对账单日期列不要折行 */
+.sheet .sh-table td:first-child{white-space:nowrap}

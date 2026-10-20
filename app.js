@@ -647,6 +647,7 @@ function openCustomer(id) {
     '<div style="display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap">' +
       '<button class="btn sm" data-act="edit-customer" data-id="' + c.id + '">编辑</button>' +
       '<button class="btn sm" data-act="followup" data-id="' + c.id + '">记跟进</button>' +
+      '<button class="btn sm" data-act="statement-for" data-id="' + c.id + '">对账单</button>' +
       '<button class="btn sm" data-act="open-scripts" data-id="' + c.id + '">话术</button>' +
       '<button class="btn sm" data-act="proposal-for" data-id="' + c.id + '">做提案</button>' +
       '<button class="btn sm" data-act="quote-for" data-id="' + c.id + '">做报价</button>' +
@@ -1205,6 +1206,10 @@ document.addEventListener('click', async (e) => {
     });
   }
 
+  if (act === 'statement-for') {
+    if (typeof window.openStatementForm === 'function') window.openStatementForm(Number(id));
+    return;
+  }
   if (act === 'proposal-for') {
     if (typeof window.openProposalForm === 'function') window.openProposalForm(Number(id));
     return;
