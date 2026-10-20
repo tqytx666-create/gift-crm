@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [],
+  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [], samples: [],
   view: 'customers', q: '',
 };
 
@@ -45,7 +45,7 @@ const TAB = {
   suppliers: 'gift_suppliers', products: 'gift_products', skus: 'gift_skus',
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
   orders: 'gift_orders', payments: 'gift_payments',
-  pools: 'gift_pools', poolItems: 'gift_pool_items',
+  pools: 'gift_pools', poolItems: 'gift_pool_items', samples: 'gift_samples',
   priceLogs: 'gift_price_logs',
 };
 let SESSION = null;
@@ -229,6 +229,7 @@ async function loadAll() {
   S.priceLogs = (d.priceLogs || []).map((x) => {
     x.old_cost = n(x.old_cost); x.new_cost = n(x.new_cost); return x;
   });
+  S.samples = (d.samples || []).map((x) => { x.qty = n(x.qty); return x; });
   updateCounts();
 }
 
@@ -240,6 +241,8 @@ function updateCounts() {
   if (co) co.textContent = (S.orders || []).length;
   const cp = $('#cntPools');
   if (cp) cp.textContent = (S.pools || []).filter((x) => x.status === 'open').length;
+  const cs = $('#cntSamples');
+  if (cs) cs.textContent = (S.samples || []).filter((x) => x.status !== 'confirmed').length;
   const ci = $('#cntInbox');
   if (ci && typeof buildTasks === 'function') {
     try { ci.textContent = buildTasks().length; } catch (e) { ci.textContent = ''; }
@@ -402,7 +405,7 @@ function applyHash() {
     window.showPrintQuote(Number(parts[2]));
     return;
   }
-  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'inbox', 'dashboard', 'data'];
+  const ok = ['customers', 'products', 'suppliers', 'quote', 'orders', 'pools', 'samples', 'inbox', 'dashboard', 'data'];
   if (ok.indexOf(parts[0]) >= 0) setView(parts[0], parts[1] ? Number(parts[1]) : 0);
   else setView('customers', 0);
 }
@@ -434,6 +437,8 @@ function topActions() {
     box.innerHTML = '<button class="btn primary" data-act="add-pool">+ 建一个拼单</button>';
   } else if (S.view === 'dashboard') {
     box.innerHTML = '<button class="btn" data-act="go-orders">看订单</button>';
+  } else if (S.view === 'samples') {
+    box.innerHTML = '<button class="btn primary" data-act="add-sample">+ 新建打样</button>';
   } else {
     box.innerHTML = '';
   }
@@ -445,6 +450,7 @@ function render() {
   if (S.view === 'pools' && typeof window.renderPools === 'function') return window.renderPools();
   if (S.view === 'inbox' && typeof window.renderInbox === 'function') return window.renderInbox();
   if (S.view === 'dashboard' && typeof window.renderDashboard === 'function') return window.renderDashboard();
+  if (S.view === 'samples' && typeof window.renderSamples === 'function') return window.renderSamples();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
 }
@@ -572,6 +578,17 @@ function openCustomer(id) {
           kv('常买品类', st.topCats.join('、') || '—') +
           kv('最近成交', st.lastOrder ? localDate(st.lastOrder) : '—') +
         '</div>';
+    })() +
+    (function () {
+      const ss = (S.samples || []).filter((x) => Number(x.customer_id) === Number(c.id));
+      if (!ss.length) return '';
+      return '<div class="section-title">打样记录 <span class="muted small">' + ss.length + ' 条</span></div>' +
+        '<div class="flist">' + ss.map((x) =>
+          '<div class="fitem" data-act="open-sample" data-id="' + x.id + '" style="cursor:pointer">' +
+          '<div class="rowtitle">' + esc(x.product_name || '') + (x.spec ? ' · ' + esc(x.spec) : '') +
+          '　' + (typeof sampleTag === 'function' ? sampleTag(x.status) : '') + '</div>' +
+          '<div class="rowsub">' + esc(x.position || '') + (x.color ? ' · ' + esc(x.color) : '') +
+          (x.confirmed_by ? ' · 确认：' + esc(x.confirmed_by) : '') + '</div></div>').join('') + '</div>';
     })() +
     '<div class="section-title">跟进记录 <span class="muted small">' + fus.length + ' 条</span></div>' +
     (fus.length ? '<div class="flist">' + fus.map((f) =>
