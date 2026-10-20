@@ -685,3 +685,43 @@ td.down{color:var(--ok);font-weight:600}
 @media (max-width:760px){
   .offline-bar{font-size:12px;padding:8px 12px}
 }
+
+/* ---------- 使用说明 ---------- */
+.g-step{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;
+  padding:11px 0;border-bottom:1px dashed var(--line2)}
+.g-step:last-child{border-bottom:none}
+.gs-mark{width:24px;height:24px;border-radius:50%;background:#efe7da;color:#a89880;
+  display:grid;place-items:center;font-size:13px;flex:none}
+.g-step.done .gs-mark{background:#e8f1ec;color:var(--ok)}
+.gs-title{font-size:14px;font-weight:600}
+.g-step.done .gs-title{color:var(--ok);font-weight:500}
+.gs-text{font-size:12.5px;color:var(--sub);margin-top:2px;line-height:1.6}
+.g-ol{margin:0;padding-left:20px;line-height:2;font-size:13px}
+.g-ol b{color:var(--ink)}
+.g-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.g-table td{padding:8px 10px;border-bottom:1px dashed var(--line2);vertical-align:top;line-height:1.7}
+.g-table tr:last-child td{border-bottom:none}
+.g-table td:first-child{white-space:nowrap;color:var(--brand);width:74px}
+.g-p{margin:0 0 8px;font-size:12.5px;line-height:1.9;color:#4a3d32}
+
+@media (max-width:760px){
+  .g-step{grid-template-columns:auto minmax(0,1fr);gap:10px}
+  .g-step .btn{grid-column:2;justify-self:start}
+  .g-table td{font-size:12px}
+}
+
+/* ---------- 手机导航换行 + 动态高度 ---------- */
+.app{height:100dvh}
+@media (max-width:760px){
+  .rail{flex-wrap:wrap;overflow:visible;align-items:flex-start;gap:6px}
+  #nav{flex:1 1 auto;flex-wrap:wrap;min-width:0;gap:4px}
+  .nav-btn{padding:6px 10px;font-size:12px;white-space:nowrap}
+}
+
+/* 手机导航再紧凑一点，别占太多竖屏 */
+@media (max-width:760px){
+  .rail{padding:7px 10px;gap:5px}
+  #nav{gap:3px}
+  .nav-btn{padding:5px 9px;font-size:11.5px;border-radius:7px}
+  .logo{width:24px;height:24px;font-size:12px}
+}

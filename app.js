@@ -517,7 +517,13 @@ function topActions() {
   }
 }
 
+let lastRenderedView = null;
+
 function render() {
+  const box = $('#view');
+  // 同一个页面内重绘（比如关掉抽屉、改完一条），别让列表弹回顶部
+  const keepTop = (S.view === lastRenderedView) ? box.scrollTop : 0;
+  lastRenderedView = S.view;
   topActions();
   if (S.view === 'orders' && typeof window.renderOrders === 'function') return window.renderOrders();
   if (S.view === 'pools' && typeof window.renderPools === 'function') return window.renderPools();
@@ -526,6 +532,7 @@ function render() {
   if (S.view === 'samples' && typeof window.renderSamples === 'function') return window.renderSamples();
   const map = { customers: renderCustomers, products: renderProducts, suppliers: renderSuppliers, quote: renderQuote, data: renderData };
   (map[S.view] || renderCustomers)();
+  if (keepTop) box.scrollTop = keepTop;
 }
 
 /* ================= 客户 ================= */
@@ -1067,66 +1074,7 @@ function renderData() {
     $('#view').innerHTML = tabs + window.renderTrash();
     return;
   }
-  $('#view').innerHTML = tabs +
-    '<div class="cards">' +
-      '<div class="stat"><b>' + S.customers.length + '</b><span>客户</span></div>' +
-      '<div class="stat"><b>' + S.skus.length + '</b><span>SKU</span></div>' +
-      '<div class="stat"><b>' + S.suppliers.length + '</b><span>厂家</span></div>' +
-      '<div class="stat"><b>' + S.followups.length + '</b><span>跟进记录</span></div>' +
-    '</div>' +
-
-    '<div class="panel" style="max-width:820px;margin-bottom:14px">' +
-      '<h4>每天怎么用（10 分钟）</h4>' +
-      '<ol class="small" style="padding-left:20px;line-height:2;margin:0">' +
-        '<li>打开「客户」，看顶上「还在跟」那一栏，逐个点进去看一眼上次聊到哪。</li>' +
-        '<li>聊完马上点「记跟进」写一句，系统自动更新最近联系日期。</li>' +
-        '<li>客户要报价，点「做报价」→ 加商品 → 改加价率 → 复制文字发微信。</li>' +
-      '</ol>' +
-    '</div>' +
-
-    '<div class="panel" style="max-width:820px;margin-bottom:14px">' +
-      '<h4>产品是怎么记的（三级）</h4>' +
-      '<p class="small muted" style="margin-top:0">厂家 → 产品 → 规格。价格记在「规格」上，因为同一个保温杯，500ml 和 350ml 成本不一样。</p>' +
-      '<ul class="small muted" style="padding-left:20px;line-height:1.9;margin:0">' +
-        '<li>先在「厂家」里建厂，填默认起订量和交期。</li>' +
-        '<li>再在「产品库」里点「+ 新增产品」，选它属于哪个厂。</li>' +
-        '<li>最后点「+ 新增规格」，填成本、300 套价、1000 套价、起订量、印字方式。</li>' +
-        '<li>报价时数量到 300 / 1000 会自动用阶梯价，不用自己算。</li>' +
-      '</ul>' +
-    '</div>' +
-
-    '<div class="panel" style="max-width:820px;margin-bottom:14px">' +
-      '<h4>拼单怎么找</h4>' +
-      '<p class="small muted" style="margin-top:0">客户页的「品牌 / 拼单」那一列，绿色「可拼单 N」就是这个品牌还有几家在手上。' +
-      '点开任一客户，抽屉底下会列出同品牌的其他客户和他们的城市、规模。</p>' +
-    '</div>' +
-
-    '<div class="panel" style="max-width:820px">' +
-      '<h4>备份与导出</h4>' +
-      '<p class="small muted" style="margin-top:0">数据存在云端，手机和电脑打开是同一份。' +
-      '但 <b>每个月备份一次</b>，下载下来丢网盘或发自己微信收藏，双保险。</p>' +
-      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">' +
-        '<button class="btn primary" data-act="backup">下载数据库备份</button>' +
-        '<button class="btn" data-act="csv">导出客户名单（CSV）</button>' +
-      '</div>' +
-      '<div class="section-title">说明</div>' +
-      '<ul class="small muted" style="padding-left:18px;line-height:1.9;margin:0">' +
-        '<li>云端数据库是 Supabase 里 <code>gift_</code> 开头的 6 张表，只有登录后才能读写。</li>' +
-        '<li>「下载数据库备份」是一个 JSON 文件，包含全部客户、厂家、产品和报价。</li>' +
-        '<li>CSV 可以用 Excel 打开，发给别人不怕格式乱。</li>' +
-        '<li>换手机、换电脑，同一个账号登进去就是同一份数据。</li>' +
-      '</ul>' +
-      '<div class="section-title">店铺信息（打印报价单用）</div>' +
-      '<p class="small muted" style="margin-top:0">这里填的名字、电话、地址、logo，会自动出现在打印出来的报价单上。</p>' +
-      '<button class="btn" data-act="edit-shop" style="margin-top:6px">编辑店铺信息</button>' +
-      '<div class="section-title">谁能看到</div>' +
-      '<p class="small muted" style="margin-top:0">现在不设密码，<b>谁拿到网址谁就能进</b>。' +
-      '所以别把这个网址发到群里、朋友圈，也别做成公开的二维码。' +
-      '以后要加密码、或给员工单独开号，说一声就行。</p>' +
-      '<div class="section-title">示例数据</div>' +
-      '<p class="small muted">第一次打开时放了几条示例（3 个厂、12 个品、5 个客户），方便看格式。真正开始用之前建议清掉。</p>' +
-      '<button class="btn danger" data-act="wipe" style="margin-top:6px">清空所有示例数据</button>' +
-    '</div>';
+  $('#view').innerHTML = tabs + (typeof window.guideHtml === 'function' ? window.guideHtml() : '');
 }
 
 /* ================= 事件委托 ================= */

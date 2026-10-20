@@ -177,3 +177,88 @@ window.renderHealth = renderHealth;
 window.renderTrash = renderTrash;
 window.trashTabsHtml = trashTabsHtml;
 window.healthIssues = healthIssues;
+
+/* ---------------- 使用说明（像样的那种） ---------------- */
+function guideHtml() {
+  const sh = (typeof shop === 'function') ? shop() : {};
+  const shopReady = !!(S.settings || {}).shop_name;
+  const imgReady = (S.products || []).some((p) => p.image);
+  const custReady = (S.customers || []).length > 0;
+
+  const step = (ok, title, body, act, action) =>
+    '<div class="g-step ' + (ok ? 'done' : '') + '">' +
+      '<div class="gs-mark">' + (ok ? '✓' : '○') + '</div>' +
+      '<div class="gs-body"><div class="gs-title">' + title + '</div>' +
+      '<div class="gs-text">' + body + '</div></div>' +
+      (act ? '<button class="btn sm" data-act="' + act + '">' + action + '</button>' : '') +
+    '</div>';
+
+  return '' +
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>开工前先做这三件事</h4>' +
+      step(shopReady, '填店铺信息',
+        '名字、电话、地址、logo。填一次，以后每张报价单和方案都会自动带上。',
+        'edit-shop', '去填') +
+      step(imgReady, '给常卖的品传图',
+        '产品库里点一行，找到「产品图」选图。报价单上就会显示产品照片。',
+        'go-products', '去传') +
+      step(custReady, '把老客户录进来',
+        '公司名写「城市 + 店名 + 品牌」。品牌这一列最关键，拼单全靠它。',
+        'go-customers', '去录') +
+    '</div>' +
+
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>每天怎么用（10 分钟）</h4>' +
+      '<ol class="g-ol">' +
+        '<li><b>打开「待办」</b>，从第一条开始往下打。系统按「钱 → 报价 → 流失 → 复购 → 活动」排好了。</li>' +
+        '<li>点进客户，看一眼上次聊到哪，<b>聊完立刻点「记跟进」</b>写一句。</li>' +
+        '<li>客户要东西：先点<b>「做提案」</b>给方案，再点<b>「做报价」</b>出价格。</li>' +
+        '<li>报价单存下来会在「订单」里，谈成了就<b>转成订单</b>，收到钱就<b>记一笔收款</b>。</li>' +
+      '</ol>' +
+    '</div>' +
+
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>三张纸怎么发出去</h4>' +
+      '<table class="g-table"><tbody>' +
+        '<tr><td><b>报价单</b></td><td>订单 → 报价单 → 点「打印 / 存 PDF」→ 浏览器打印目标选「另存为 PDF」</td></tr>' +
+        '<tr><td><b>活动方案</b></td><td>客户详情 → 「做提案」→ 填五格 → 打印 / 存 PDF</td></tr>' +
+        '<tr><td><b>效果图</b></td><td>方案第三段留了位置，图做好贴进去再发</td></tr>' +
+      '</tbody></table>' +
+      '<div class="hint">打印出来的都是 A4，可以直接微信发给客户，也可以打印带在身上。</div>' +
+    '</div>' +
+
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>四个容易被忽略的功能</h4>' +
+      '<table class="g-table"><tbody>' +
+        '<tr><td><b>拼单</b></td><td>工厂 300 套起印、客户只要 100 套时，建个拼单把同品牌的几家拉进来，凑够自动降价</td></tr>' +
+        '<tr><td><b>打样</b></td><td>logo 文件、印字位置、色号、谁确认的，一张卡钉死，避免整批返工</td></tr>' +
+        '<tr><td><b>比价</b></td><td>产品库 → 同品比价，同一个品不同厂的报价并排看</td></tr>' +
+        '<tr><td><b>体检</b></td><td>数据 → 数据体检，哪条缺电话/缺成本价，点一下直接去补</td></tr>' +
+      '</tbody></table>' +
+    '</div>' +
+
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>手机怎么装成 App</h4>' +
+      '<p class="g-p"><b>iPhone</b>：Safari 打开 → 分享 → 添加到主屏幕。<br>' +
+      '<b>安卓</b>：Chrome 打开 → 右上角三个点 → 添加到主屏幕。</p>' +
+      '<p class="g-p">装好后全屏、有自己的图标，<b>断网也能打开看客户</b>（联网时自动存一份到手机上）。断网时只能看不能改。</p>' +
+    '</div>' +
+
+    '<div class="panel" style="margin-bottom:14px">' +
+      '<h4>备份与导出</h4>' +
+      '<p class="g-p">数据在云端，手机和电脑打开是同一份。但还是<b>每个月备份一次</b>，下载下来丢网盘或发自己微信收藏。</p>' +
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px">' +
+        '<button class="btn primary" data-act="backup">下载数据库备份</button>' +
+        '<button class="btn" data-act="csv">导出客户名单（CSV）</button>' +
+        '<button class="btn danger" data-act="wipe">清空示例数据</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="panel">' +
+      '<h4>谁能看到</h4>' +
+      '<p class="g-p">现在不设密码，<b>谁拿到网址谁就能进</b>。所以别把网址发到群里、朋友圈，也别做成公开二维码。' +
+      '以后要加密码、或给员工单独开号，说一声就行。</p>' +
+    '</div>';
+}
+
+window.guideHtml = guideHtml;
