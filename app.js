@@ -299,6 +299,7 @@ function hydrate(d) {
   }).filter((x) => !x.deleted_at);
   S.scripts = (d.scripts || []).map((x) => { x.used_count = n(x.used_count); return x; })
     .filter((x) => !x.deleted_at);
+  S.shares = (d.shares || []).map((x) => { x.views = n(x.views); return x; });
   updateCounts();
 }
 

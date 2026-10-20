@@ -221,9 +221,37 @@ function showProposal(customerId, opts) {
     '</div>' +
     '<div class="print-bar no-print">' +
       '<button class="btn" data-act="leave-print">← 返回</button>' +
-      '<button class="btn primary" data-act="do-print">打印 / 存 PDF</button>' +
-      '<span class="small muted">Chrome：打印目标选「另存为 PDF」，边距选「默认」</span>' +
+      '<button class="btn primary" data-act="share-proposal">分享给客户</button>' +
+      '<button class="btn" data-act="do-print">打印 / 存 PDF</button>' +
+      '<span class="small muted">分享发链接，打印存 PDF</span>' +
     '</div>';
+
+  // 留一份给「分享给客户」用（只放卖价，不放成本）
+  window.LAST_PROPOSAL = {
+    customerId: Number(customerId),
+    payload: {
+      kind: 'proposal',
+      shop: { name: sh.name, contact: sh.contact, phone: sh.phone, wechat: sh.wechat, addr: sh.addr, logo: sh.logo },
+      customer: { company: c.company || '客户', contact: c.contact || '', logo: c.logo_url || '' },
+      title: (c.company || '') + ' · ' + (opts.act || '活动方案'),
+      act: opts.act || '', when: opts.when || '', goal: opts.goal || '',
+      budget: Number(opts.budget || 0), qty: qty,
+      hooks: ind.hooks.slice(),
+      goalNote: goal,
+      tiers: [
+        { label: '引流款', use: '进店就送 / 签到礼', min: 0, max: bands.t1,
+          items: t1.map((r) => ({ name: r.p.name, spec: r.s.spec, price: r.price, moq: r.s.moq })) },
+        { label: '成交款', use: '下单满额赠 / 试用礼', min: bands.t2a, max: bands.t2b,
+          items: t2.map((r) => ({ name: r.p.name, spec: r.s.spec, price: r.price, moq: r.s.moq })) },
+        { label: '大单款', use: '大额订单 / 抽奖头奖', min: bands.t3, max: 0,
+          items: t3.map((r) => ({ name: r.p.name, spec: r.s.spec, price: r.price, moq: r.s.moq })) },
+      ],
+      poolHint: moq && qty < moq
+        ? '你这次要 ' + qty + ' 套，这个品的起订量是 ' + moq + ' 套，我可以把做' + (c.brand || '同品牌') + '的其他店一起拼版。'
+        : '',
+      date: todayCn(),
+    },
+  };
 
   S.view = 'print';
   if (typeof closeDrawer === 'function') closeDrawer();

@@ -288,6 +288,7 @@ function openQuoteDetail(id) {
       kv('有效期到', q.valid_until || '') +
       kv('创建', localDate(q.created_at)) +
       kv('加价率', (Number(q.markup || 0) * 100).toFixed(0) + '%') +
+      kv('分享状态', (typeof shareStatusText === 'function') ? shareStatusText('quote', q.id) : '') +
     '</div>' +
     '<div class="section-title">明细</div><div class="qbox">' + itemsHtml + '</div>' +
     '<div style="display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap">' +

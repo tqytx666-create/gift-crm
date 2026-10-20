@@ -34,10 +34,7 @@ function buildQuotePayload(quoteId) {
   };
 }
 
-async function makeShareLink(quoteId) {
-  const payload = buildQuotePayload(quoteId);
-  if (!payload || !payload.items.length) return toast('这份报价没有明细，先补上');
-
+async function createShare(kind, payload, refId, title) {
   const tk = await token();
   for (let i = 0; i < 4; i++) {
     const t = shareToken();
@@ -49,11 +46,15 @@ async function makeShareLink(quoteId) {
         'Content-Type': 'application/json',
         Prefer: 'return=minimal',
       },
-      body: JSON.stringify({ token: t, kind: 'quote', payload: payload }),
+      body: JSON.stringify({
+        token: t, kind: kind, payload: payload,
+        ref_id: refId || null, title: title || '',
+      }),
     });
     if (r.ok) {
       const url = location.origin + location.pathname + '#share/' + t;
       copyText(url, '链接已复制，直接发微信给客户');
+      if (typeof loadAll === 'function') loadAll().then(() => render()).catch(() => null);
       return url;
     }
     if (r.status !== 409) {
@@ -63,6 +64,34 @@ async function makeShareLink(quoteId) {
   }
   toast('生成失败，再试一次');
   return null;
+}
+
+async function makeShareLink(quoteId) {
+  const payload = buildQuotePayload(quoteId);
+  if (!payload || !payload.items.length) return toast('这份报价没有明细，先补上');
+  const q = byId(S.quotes, quoteId);
+  return createShare('quote', payload, Number(quoteId), q ? (q.customer_name || '') + ' 报价' : '报价');
+}
+
+async function makeProposalShare() {
+  const last = window.LAST_PROPOSAL;
+  if (!last || !last.payload) return toast('先出一份方案再分享');
+  return createShare('proposal', last.payload, last.customerId || null,
+    (last.payload.customer && last.payload.customer.company ? last.payload.customer.company + ' ' : '') + '活动方案');
+}
+
+// 某个报价/方案发过的分享，最近一条
+function shareStatusOf(kind, refId) {
+  const list = (S.shares || []).filter((x) => x.kind === kind && Number(x.ref_id) === Number(refId));
+  if (!list.length) return null;
+  return list.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+}
+
+function shareStatusText(kind, refId) {
+  const sh = shareStatusOf(kind, refId);
+  if (!sh) return '还没发过';
+  if (!Number(sh.views)) return '发了，客户还没点开';
+  return '客户看过 ' + sh.views + ' 次（最近 ' + localDate(sh.last_viewed_at) + '）';
 }
 
 async function fetchShare(tokenStr) {
@@ -96,6 +125,7 @@ async function showShare(tokenStr) {
       '<h2>链接失效了</h2><p>可能已经过期，或者链接不完整。让业务员重新发一次吧。</p></div></div>';
     return;
   }
+  if (p.kind === 'proposal') return renderShareProposal(p);
 
   const sh = p.shop || {};
   const c = p.customer || {};
@@ -155,13 +185,81 @@ async function showShare(tokenStr) {
     '</div>';
 }
 
+function renderShareProposal(p) {
+  const sh = p.shop || {};
+  const c = p.customer || {};
+  const tiers = (p.tiers || []).map((t) => {
+    const items = (t.items || []).length
+      ? t.items.map((i) => esc(i.name) + (i.spec ? '（' + esc(i.spec) + '）' : '') +
+          ' <span class="ps">¥' + fmt(i.price) + (i.moq ? ' / 起订 ' + i.moq : '') + '</span>').join('<br>')
+      : '<span class="muted">这个价位暂时没有合适的品</span>';
+    return '<tr><td><b>' + esc(t.label) + '</b><div class="ps">' + esc(t.use) + '</div></td><td>' + items + '</td></tr>';
+  }).join('');
+
+  $('#view').innerHTML =
+    '<div class="share-wrap">' +
+      '<div class="sheet prop-sheet">' +
+        '<div class="sh-head">' +
+          '<div class="sh-brand">' +
+            (sh.logo ? '<img class="sh-logo" src="' + esc(sh.logo) + '" alt="">' : '') +
+            '<div><div class="sh-name">' + esc(sh.name || '礼品定制') + '</div>' +
+            '<div class="sh-slogan">' + esc(sh.slogan || '') + '</div></div>' +
+          '</div>' +
+          '<div class="sh-title">礼品活动方案</div>' +
+        '</div>' +
+        '<div class="sh-meta"><div>' +
+          [sh.contact, sh.phone, sh.wechat && ('微信 ' + sh.wechat)].filter(Boolean).map(esc).join('　·　') +
+          '</div><div>' + esc(p.date || '') + '</div></div>' +
+        '<div class="sh-client">' +
+          (c.logo ? '<img class="cl-logo" src="' + esc(c.logo) + '" alt="">' : '') +
+          '<div class="cl-body"><div class="cl-name">' + esc(c.company) + '　·　' + esc(p.act || '') + '</div>' +
+          '<div class="cl-sub">' + [c.contact && ('联系人：' + c.contact), p.when && ('时间：' + p.when)]
+            .filter(Boolean).map(esc).join('　　') + '</div></div>' +
+        '</div>' +
+        '<div class="prop-sec"><h3>一、你的场景</h3><p>' +
+          esc(c.company) + ' 准备在 ' + esc(p.when || '近期') + ' 做一场「' + esc(p.act) + '」，' +
+          '目标是「' + esc(p.goal || '') + '」。进店礼预算 ' + esc(p.budget) + ' 元以内，预计 ' +
+          esc(p.qty) + ' 套。</p>' +
+          (p.goalNote ? '<div class="prop-note">' + esc(p.goalNote) + '</div>' : '') + '</div>' +
+        '<div class="prop-sec"><h3>二、活动怎么设计</h3><ol class="prop-ol">' +
+          (p.hooks || []).map((h) => '<li>' + esc(h) + '</li>').join('') + '</ol></div>' +
+        '<div class="prop-sec"><h3>三、礼品三档</h3>' +
+          '<table class="sh-table"><tbody>' + tiers + '</tbody></table>' +
+          (p.poolHint ? '<div class="prop-note">' + esc(p.poolHint) + '</div>' : '') + '</div>' +
+        '<div class="prop-sec"><h3>四、效果图</h3>' +
+          '<p>上面三档各挑 1~2 个品，配上 logo 出效果图——让您先看见「摆在我店里什么样」。</p></div>' +
+        '<div class="sh-terms">' +
+          '<div>1. 单价含 logo 印制，不含特殊工艺加价。</div>' +
+          '<div>2. 运费物流到付，不含在报价内。</div>' +
+          '<div>3. 品类只是建议，可以按预算替换。</div>' +
+        '</div>' +
+        '<div class="share-cta"><div class="scta-t">这份方案哪里想调整，直接跟我说</div>' +
+          '<div class="scta-b">' +
+            (sh.phone ? '<a class="scta-btn" href="tel:' + esc(sh.phone) + '">打电话</a>' : '') +
+            '<span class="scta-wx">微信 ' + esc(sh.wechat || sh.phone || '') + '</span>' +
+          '</div></div>' +
+        '<div class="sh-foot">' + (sh.addr ? esc(sh.addr) + '　' : '') + esc(sh.name || '') +
+          (sh.phone ? '　' + esc(sh.phone) : '') + '</div>' +
+      '</div>' +
+      '<div class="print-bar no-print" style="justify-content:center">' +
+        '<button class="btn" onclick="window.print()">存成 PDF</button></div>' +
+    '</div>';
+}
+
 window.showShare = showShare;
 window.makeShareLink = makeShareLink;
+window.makeProposalShare = makeProposalShare;
+window.shareStatusText = shareStatusText;
 
 /* ---------------- 事件 ---------------- */
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
+  if (el.dataset.act === 'share-proposal') {
+    el.disabled = true;
+    makeProposalShare().finally(() => { el.disabled = false; });
+    return;
+  }
   if (el.dataset.act === 'share-quote') {
     el.disabled = true;
     makeShareLink(el.dataset.id).finally(() => { el.disabled = false; });
