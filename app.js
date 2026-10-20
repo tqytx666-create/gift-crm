@@ -138,6 +138,11 @@ async function rest(table, query, opts) {
   return data;
 }
 
+const SOFT_DEL = {
+  customers: 1, products: 1, skus: 1, suppliers: 1,
+  quotes: 1, orders: 1, pools: 1, samples: 1,
+};
+
 const NUM_FIELDS = ['moq', 'cost', 'price300', 'price1000', 'lead_days', 'budget',
   'supplier_id', 'product_id', 'customer_id', 'markup', 'total_cost', 'total_price'];
 
@@ -215,15 +220,29 @@ async function loadAll() {
   (d.pools || []).forEach((x) => { x.target_qty = n(x.target_qty); });
   (d.poolItems || []).forEach((x) => { x.qty = n(x.qty); });
 
-  S.suppliers = d.suppliers || [];
-  S.products = d.products || [];
-  S.skus = d.skus || [];
-  S.customers = d.customers || [];
+  // 已删除的先挑出来放进回收站，页面上一律看不见
+  window.TRASH = {};
+  function split(key, rows) {
+    const live = [];
+    (rows || []).forEach((r) => {
+      if (SOFT_DEL[key] && r.deleted_at) {
+        (window.TRASH[key] = window.TRASH[key] || []).push(r);
+      } else {
+        live.push(r);
+      }
+    });
+    return live;
+  }
+
+  S.suppliers = split('suppliers', d.suppliers);
+  S.products = split('products', d.products);
+  S.skus = split('skus', d.skus);
+  S.customers = split('customers', d.customers);
   S.followups = d.followups || [];
-  S.quotes = d.quotes || [];
-  S.orders = d.orders || [];
+  S.quotes = split('quotes', d.quotes);
+  S.orders = split('orders', d.orders);
   S.payments = d.payments || [];
-  S.pools = d.pools || [];
+  S.pools = split('pools', d.pools);
   S.poolItems = d.poolItems || [];
   S.settings = d.settings || {};
   S.priceLogs = (d.priceLogs || []).map((x) => {
@@ -258,13 +277,24 @@ async function save(table, id, body) {
 }
 
 async function del(table, id, name) {
-  if (!confirm('确定删除「' + (name || '这条') + '」？删了拿不回来。')) return;
+  const soft = !!SOFT_DEL[table];
+  if (!confirm(soft
+    ? '把「' + (name || '这条') + '」移到回收站？随时能捞回来。'
+    : '删除「' + (name || '这条') + '」？删了拿不回来。')) return;
   try {
-    await rest(table, '?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    if (soft) {
+      await rest(table, '?id=eq.' + id, {
+        method: 'PATCH',
+        body: { deleted_at: new Date().toISOString() },
+        prefer: 'return=minimal',
+      });
+    } else {
+      await rest(table, '?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+    }
     await loadAll();
     closeDrawer();
     render();
-    toast('已删除');
+    toast(soft ? '已移到回收站' : '已删除');
   } catch (e) {
     toast('删除失败：' + e.message);
   }
@@ -984,7 +1014,17 @@ function copyText(txt) {
 
 /* ================= 数据 ================= */
 function renderData() {
-  $('#view').innerHTML =
+  const tabs = (typeof window.trashTabsHtml === 'function') ? window.trashTabsHtml() : '';
+  const tab = (window.DATA || {}).tab || 'guide';
+  if (tab === 'health' && typeof window.renderHealth === 'function') {
+    $('#view').innerHTML = tabs + window.renderHealth();
+    return;
+  }
+  if (tab === 'trash' && typeof window.renderTrash === 'function') {
+    $('#view').innerHTML = tabs + window.renderTrash();
+    return;
+  }
+  $('#view').innerHTML = tabs +
     '<div class="cards">' +
       '<div class="stat"><b>' + S.customers.length + '</b><span>客户</span></div>' +
       '<div class="stat"><b>' + S.skus.length + '</b><span>SKU</span></div>' +
