@@ -576,7 +576,9 @@ function renderCustomers() {
   const rows = list.map((c) => {
     const same = c.brand ? (brandCount[c.brand] - 1) : 0;
     return '<tr data-act="open-customer" data-id="' + c.id + '">' +
-      '<td><div class="rowtitle">' + esc(c.company || '未命名') + '</div>' +
+      '<td><label class="rowcheck" onclick="event.stopPropagation()">' +
+        '<input type="checkbox" class="rowsel" data-id="' + c.id + '"></label>' +
+        '<div class="rowtitle">' + esc(c.company || '未命名') + '</div>' +
       (c.note ? '<div class="rowsub">' + esc(c.note.slice(0, 28)) + '</div>' : '') + '</td>' +
       '<td>' + dash(c.contact) + (c.salutation ? '<div class="rowsub">' + esc(c.salutation) + '</div>' : '') + '</td>' +
       '<td>' + (typeof gradeTag === 'function' ? gradeTag(custStats(c.id).grade) + ' ' : '') +
@@ -606,7 +608,9 @@ function renderCustomers() {
       '<select id="fBrand"><option value="">品牌不限</option>' +
         brands.map((b) => '<option ' + (st.brand === b ? 'selected' : '') + '>' + esc(b) + '</option>').join('') + '</select>' +
       '<span class="muted small">' + list.length + ' 条</span>' +
+      '<label class="selall"><input type="checkbox" id="selAll"> 全选</label>' +
     '</div>' +
+    (typeof window.batchBarHtml === 'function' ? window.batchBarHtml() : '') +
     '<div class="table-wrap cust-list"><table><thead><tr>' +
       '<th>公司</th><th>联系人</th><th>品牌 / 拼单</th><th>城市</th><th class="num">进店礼预算</th><th>阶段</th><th>最近联系</th>' +
     '</tr></thead><tbody>' +
@@ -618,6 +622,7 @@ function renderCustomers() {
   });
   $('#fIndustry').onchange = (e) => { VS.customers.industry = e.target.value; render(); };
   $('#fBrand').onchange = (e) => { VS.customers.brand = e.target.value; render(); };
+  if (typeof window.batchBind === 'function') window.batchBind();
 }
 
 function stageTag(s) {
