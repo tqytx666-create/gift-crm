@@ -2,7 +2,7 @@
 
 const S = {
   suppliers: [], products: [], skus: [], customers: [], followups: [], quotes: [],
-  orders: [], payments: [], pools: [], poolItems: [], settings: {},
+  orders: [], payments: [], pools: [], poolItems: [], settings: {}, priceLogs: [],
   view: 'customers', q: '',
 };
 
@@ -46,6 +46,7 @@ const TAB = {
   customers: 'gift_customers', followups: 'gift_followups', quotes: 'gift_quotes',
   orders: 'gift_orders', payments: 'gift_payments',
   pools: 'gift_pools', poolItems: 'gift_pool_items',
+  priceLogs: 'gift_price_logs',
 };
 let SESSION = null;
 
@@ -225,6 +226,9 @@ async function loadAll() {
   S.pools = d.pools || [];
   S.poolItems = d.poolItems || [];
   S.settings = d.settings || {};
+  S.priceLogs = (d.priceLogs || []).map((x) => {
+    x.old_cost = n(x.old_cost); x.new_cost = n(x.new_cost); return x;
+  });
   updateCounts();
 }
 
@@ -589,6 +593,10 @@ function kv(k, v) {
 
 /* ================= 产品库 ================= */
 function renderProducts() {
+  if (window.SUP && window.SUP.tab && window.SUP.tab !== 'list' && typeof window.renderSupplyTab === 'function') {
+    const html = window.renderSupplyTab();
+    if (html) { $('#view').innerHTML = html; return; }
+  }
   const st = VS.products;
   const q = S.q;
   const supName = (id) => { const s = byId(S.suppliers, id); return s ? s.name : '未指定'; };
@@ -623,6 +631,7 @@ function renderProducts() {
   const cost = S.skus.reduce((a, s) => a + num(s.cost), 0);
 
   $('#view').innerHTML =
+    (typeof window.ptabsHtml === 'function' ? window.ptabsHtml() : '') +
     '<div class="cards">' +
       '<div class="stat"><b>' + S.products.length + '</b><span>产品</span></div>' +
       '<div class="stat"><b>' + S.skus.length + '</b><span>规格 / SKU</span></div>' +
@@ -653,30 +662,58 @@ function renderProducts() {
 function renderSuppliers() {
   const q = S.q;
   let list = S.suppliers.slice();
-  if (q) list = list.filter((s) => [s.name, s.contact, s.region, s.category, s.note].join(' ').toLowerCase().includes(q));
+  if (q) list = list.filter((x) => [x.name, x.contact, x.region, x.category, x.note]
+    .join(' ').toLowerCase().includes(q));
 
-  const pcount = (sid) => S.products.filter((p) => Number(p.supplier_id) === Number(sid)).length;
+  const stat = (sid) => (typeof window.supplierStats === 'function'
+    ? window.supplierStats(sid)
+    : { productCount: 0, skuCount: 0, orderCount: 0, amount: 0, avgPromised: 0, avgActual: null, onTimeRate: null });
 
-  const body = list.map((s) =>
-    '<tr data-act="edit-supplier" data-id="' + s.id + '">' +
-    '<td><div class="rowtitle">' + esc(s.name) + '</div>' +
-    (s.note ? '<div class="rowsub">' + esc(s.note) + '</div>' : '') + '</td>' +
-    '<td>' + dash(s.contact) + '</td>' +
-    '<td class="muted">' + dash(s.phone) + '</td>' +
-    '<td>' + dash(s.region) + '</td>' +
-    '<td>' + (s.category ? '<span class="tag">' + esc(s.category) + '</span>' : '—') + '</td>' +
-    '<td class="num">' + (s.moq || 0) + '</td>' +
-    '<td class="num">' + (s.lead_days || 0) + ' 天</td>' +
-    '<td class="num">' + pcount(s.id) + '</td>' +
-    '</tr>').join('');
+  const body = list.map((s) => {
+    const st = stat(s.id);
+    return '<tr data-act="edit-supplier" data-id="' + s.id + '">' +
+      '<td><div class="rowtitle">' + esc(s.name) + '</div>' +
+      (s.note ? '<div class="rowsub">' + esc(s.note) + '</div>' : '') + '</td>' +
+      '<td>' + dash(s.contact) + (s.phone ? '<div class="rowsub">' + esc(s.phone) + '</div>' : '') + '</td>' +
+      '<td>' + dash(s.region) + '</td>' +
+      '<td>' + (s.category ? '<span class="tag">' + esc(s.category) + '</span>' : '—') + '</td>' +
+      '<td class="num">' + st.productCount + ' / ' + st.skuCount + '</td>' +
+      '<td class="num">' + (s.moq || 0) + '</td>' +
+      '<td class="num">' + (st.avgPromised || s.lead_days || 0) + ' 天</td>' +
+      '<td class="num ' + (st.avgActual !== null && st.avgActual > st.avgPromised ? 'up' : '') + '">' +
+        (st.avgActual !== null ? st.avgActual + ' 天' : '<span class="muted">—</span>') + '</td>' +
+      '<td>' + (typeof leadBadge === 'function' ? leadBadge(st)
+        : (st.onTimeRate === null ? '<span class="muted small">还没发过货</span>' : Math.round(st.onTimeRate * 100) + '%')) + '</td>' +
+      '<td class="num">' + (st.amount ? '¥' + fmt0(st.amount) : '<span class="muted">—</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+
+  const totals = list.reduce((a, s) => {
+    const st = stat(s.id);
+    a.orders += st.orderCount;
+    a.amount += st.amount;
+    if (st.onTimeRate !== null) { a.rated++; a.onTime += st.onTimeRate; }
+    return a;
+  }, { orders: 0, amount: 0, rated: 0, onTime: 0 });
 
   $('#view').innerHTML =
-    '<div class="toolbar"><span class="muted small">' + list.length + ' 家厂家　·　点一行编辑，「起订量」是这个厂的默认门槛</span></div>' +
-    '<div class="table-wrap"><table><thead><tr>' +
-      '<th>厂家</th><th>联系人</th><th>电话</th><th>产地</th><th>类目</th>' +
-      '<th class="num">起订量</th><th class="num">交期</th><th class="num">产品数</th>' +
+    '<div class="cards">' +
+      '<div class="stat"><b>' + list.length + '</b><span>合作厂家</span></div>' +
+      '<div class="stat"><b>' + totals.orders + '</b><span>累计订单</span></div>' +
+      '<div class="stat"><b>' + (totals.amount ? '¥' + fmt0(totals.amount) : '¥0') + '</b><span>累计下单额</span></div>' +
+      '<div class="stat ' + (totals.rated && totals.onTime / totals.rated >= 0.8 ? 'ok' : 'warn') + '">' +
+        '<b>' + (totals.rated ? Math.round((totals.onTime / totals.rated) * 100) + '%' : '—') + '</b>' +
+        '<span>平均交期达标率</span></div>' +
+    '</div>' +
+    '<div class="toolbar"><span class="muted small">' +
+      '「承诺」是厂家说的交期，「实际」是发货后倒算出来的真实天数，达标率只看发过货的单。' +
+    '</span></div>' +
+    '<div class="table-wrap sup-list"><table><thead><tr>' +
+      '<th>厂家</th><th>联系人</th><th>产地</th><th>类目</th>' +
+      '<th class="num">产品/SKU</th><th class="num">起订量</th>' +
+      '<th class="num">承诺交期</th><th class="num">实际平均</th><th>达标率</th><th class="num">累计下单</th>' +
     '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="8" class="empty">还没有厂家。点右上角新增。</td></tr>') +
+      (body || '<tr><td colspan="10" class="empty">还没有厂家。点右上角新增。</td></tr>') +
     '</tbody></table></div>';
 }
 
@@ -1078,7 +1115,11 @@ document.addEventListener('click', async (e) => {
   }
   if (act === 'edit-sku') {
     const s = byId(S.skus, id);
-    return openForm('编辑规格', skuFields(), s, (b) => save('skus', id, b));
+    const before = s ? Object.assign({}, s) : null;
+    return openForm('编辑规格', skuFields(), s, (b) => {
+      if (typeof window.saveSkuWithLog === 'function') return window.saveSkuWithLog(id, b, before);
+      return save('skus', id, b);
+    });
   }
   if (act === 'del-customer') return del('customers', id, (byId(S.customers, id) || {}).company);
   if (act === 'del-sku') return del('skus', id, '这个规格');

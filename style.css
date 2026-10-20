@@ -553,3 +553,24 @@ body.print-mode .drawer,body.print-mode .drawer-mask,body.print-mode #modalMask{
   .tc-btns{width:100%}
   .tc-btns .btn{flex:1}
 }
+
+/* ---------- 第 5 期：供应链 ---------- */
+.cmp-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:12px}
+.cmp-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;font-size:14.5px}
+.cmp-spread{font-size:12px;color:var(--warn);background:#fbf3dd;padding:2px 9px;border-radius:99px}
+.cmp-single{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.cmp-single-item{display:flex;justify-content:space-between;gap:10px;background:var(--panel);
+  border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:13px;cursor:pointer}
+.cmp-single-item:hover{border-color:var(--brand)}
+.cmp-single-item span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+td.up{color:#b03a2e;font-weight:600}
+td.down{color:var(--ok);font-weight:600}
+.tag.bad{background:#fbeae6;color:#b03a2e}
+
+@media (max-width:760px){
+  .cmp-card{padding:11px 12px}
+  .cmp-head{font-size:13.5px;flex-wrap:wrap}
+  .cmp-single{grid-template-columns:1fr}
+  .sup-list table{min-width:700px}
+}
