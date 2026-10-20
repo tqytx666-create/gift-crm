@@ -3,7 +3,7 @@
 const PS = { tab: 'open' };
 
 const POOL_STATUS = { open: '进行中', full: '已凑满', ordered: '已下单', cancelled: '已取消' };
-const ITEM_STATUS = { invited: '待确认', confirmed: '已确认', paid: '已付定金' };
+const ITEM_STATUS = { invited: '待确认', confirmed: '已确认', paid: '已付定金', ordered: '已转订单' };
 
 function poolItems(pid) {
   return (S.poolItems || []).filter((i) => Number(i.pool_id) === Number(pid));
@@ -214,7 +214,8 @@ function openPoolDetail(id) {
     '<div class="section-title">参与的客户 <span class="muted small">' + st.people + ' 家</span></div>' +
     '<div class="pitems">' + rows + '</div>' +
     '<div style="display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap">' +
-      '<button class="btn sm primary" data-act="add-pool-item" data-id="' + p.id + '">拉客户进来</button>' +
+      '<button class="btn sm" data-act="add-pool-item" data-id="' + p.id + '">拉客户进来</button>' +
+      '<button class="btn sm primary" data-act="pool-to-orders" data-id="' + p.id + '">一键转成订单</button>' +
       '<button class="btn sm" data-act="pool-message" data-id="' + p.id + '">复制群发话术</button>' +
       '<button class="btn sm" data-act="pool-status" data-id="' + p.id + '" data-v="full">标记凑满</button>' +
       '<button class="btn sm" data-act="pool-status" data-id="' + p.id + '" data-v="ordered">标记已下单</button>' +
@@ -323,6 +324,7 @@ document.addEventListener('click', async (e) => {
   if (act === 'add-pool') return createPool();
   if (act === 'open-pool') return openPoolDetail(id);
   if (act === 'add-pool-item') return addPoolItem(id);
+  if (act === 'pool-to-orders') return poolToOrders(id);
   if (act === 'quick-add-pool') return quickAddPool(el.dataset.pool, el.dataset.cid);
   if (act === 'pool-message') return poolMessage(id);
   if (act === 'pool-status') {
@@ -350,3 +352,62 @@ document.addEventListener('click', async (e) => {
 });
 
 window.renderPools = renderPools;
+
+/* ---------------- 拼单转订单 ---------------- */
+function poolToOrders(poolId) {
+  const p = byId(S.pools, poolId);
+  if (!p) return;
+  const st = poolStat(p);
+  const todo = st.items.filter((i) => i.status !== 'ordered');
+  if (!todo.length) return toast('这个拼单里的客户都已经转成订单了');
+
+  const confirmedOnly = todo.filter((i) => i.status !== 'invited');
+  openForm('拼单转订单 · ' + (p.title || ''), [
+    { key: 'scope', label: '转哪些人', type: 'select', full: true, options: [
+      { v: 'confirmed', t: '只转已确认/已付定金的（' + confirmedOnly.length + ' 个）' },
+      { v: 'all', t: '全部转（含待确认的 ' + todo.length + ' 个）' },
+    ] },
+    { key: 'markup', label: '加价率（%）', type: 'number', def: 25 },
+    { key: 'status', label: '订单初始状态', type: 'select', options: [
+      { v: 'pending', t: '待确认' }, { v: 'producing', t: '生产中' }] },
+    { key: 'note', label: '订单备注', type: 'textarea', full: true, ph: '拼单：' + (p.title || '') },
+  ], { scope: 'confirmed', markup: 25, status: 'pending' }, async (b) => {
+    const list = b.scope === 'all' ? todo : confirmedOnly;
+    if (!list.length) return toast('没有可转的');
+    const markup = Number(b.markup || 0) / 100;
+    const unitCost = Number(st.fullCost || st.unitCost || 0);
+    const sell = Math.round(unitCost * (1 + markup) * 100) / 100;
+    const d = new Date();
+    let seq = (S.orders || []).filter((o) => String(o.code).startsWith('G' + d.getFullYear())).length;
+    let made = 0;
+
+    for (const it of list) {
+      seq += 1;
+      const qty = Number(it.qty || 0);
+      if (!qty) continue;
+      await save('orders', 0, sanitize({
+        code: 'G' + d.getFullYear() + '-' + String(seq).padStart(3, '0'),
+        customer_id: it.customer_id || null,
+        customer_name: it.customer_name || custName(it.customer_id),
+        title: (p.title || p.sku_name || '拼单') + ' · 拼单',
+        status: b.status || 'pending',
+        items_json: [{
+          name: p.sku_name || p.title || '', spec: p.spec || '',
+          qty: qty, unit_price: sell, price: Math.round(qty * sell * 100) / 100,
+        }],
+        total_cost: Math.round(qty * unitCost * 100) / 100,
+        total_price: Math.round(qty * sell * 100) / 100,
+        freight: 0,
+        note: b.note || ('拼单：' + (p.title || '')),
+      }));
+      await save('poolItems', it.id, { status: 'ordered' });
+      made += 1;
+    }
+
+    await save('pools', poolId, { status: p.status === 'open' ? 'ordered' : p.status });
+    await loadAll();
+    if ($('#drawer').classList.contains('on')) openPoolDetail(poolId);
+    renderPools();
+    toast('转成 ' + made + ' 个订单，单价 ' + fmt(sell));
+  });
+}
