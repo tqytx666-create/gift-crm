@@ -829,3 +829,6 @@ td.down{color:var(--ok);font-weight:600}
   .rp-two{page-break-inside:avoid}
   .rp-kpi{page-break-inside:avoid}
 }
+
+/* 贴聊天的输入框大一点 */
+#modalForm textarea[name=raw]{min-height:110px}

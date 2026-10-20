@@ -648,6 +648,7 @@ function openCustomer(id) {
     '<div style="display:flex;gap:8px;margin:16px 0 4px;flex-wrap:wrap">' +
       '<button class="btn sm" data-act="edit-customer" data-id="' + c.id + '">编辑</button>' +
       '<button class="btn sm" data-act="followup" data-id="' + c.id + '">记跟进</button>' +
+      '<button class="btn sm primary" data-act="paste-chat" data-id="' + c.id + '">贴聊天</button>' +
       '<button class="btn sm" data-act="statement-for" data-id="' + c.id + '">对账单</button>' +
       '<button class="btn sm" data-act="open-scripts" data-id="' + c.id + '">话术</button>' +
       '<button class="btn sm" data-act="proposal-for" data-id="' + c.id + '">做提案</button>' +
@@ -1207,6 +1208,10 @@ document.addEventListener('click', async (e) => {
     });
   }
 
+  if (act === 'paste-chat') {
+    if (typeof window.openPasteChat === 'function') window.openPasteChat(Number(id));
+    return;
+  }
   if (act === 'statement-for') {
     if (typeof window.openStatementForm === 'function') window.openStatementForm(Number(id));
     return;
