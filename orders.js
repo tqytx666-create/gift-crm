@@ -61,8 +61,9 @@ function renderOrders() {
   const monthWon = orders
     .filter((o) => thisMonth(o.created_at) && WON_STATUS[o.status])
     .reduce((a, o) => a + Number(o.total_price || 0), 0);
+  // 跟收款页用同一个口径：只要没取消的单，欠款都算
   const totalDue = orders
-    .filter((o) => !OSDONE[o.status])
+    .filter((o) => o.status !== 'cancelled')
     .reduce((a, o) => a + Math.max(0, dueOf(o)), 0);
 
   const shipList = shippingList();
@@ -216,24 +217,63 @@ function shipPanel(orders) {
     '<div class="ship-list">' + rows + '</div>';
 }
 
+const AGE_LABEL = ['30 天内', '31-60 天', '61-90 天', '90 天以上'];
+
+function ageDaysOf(o) {
+  if (!o || !o.created_at) return 0;
+  const t = new Date(o.created_at).getTime();
+  if (isNaN(t)) return 0;
+  return Math.max(0, Math.round((Date.now() - t) / 86400000));
+}
+function ageBucketOf(d) {
+  if (d <= 30) return 0;
+  if (d <= 60) return 1;
+  if (d <= 90) return 2;
+  return 3;
+}
+
 function payPanel(orders) {
-  const live = orders.filter((o) => !OSDONE[o.status]);
+  // 只要不是取消的单，欠款一律算进来——订单标了「已完成」钱没到，也得盯着
+  const live = orders.filter((o) => o.status !== 'cancelled');
   const totalDue = live.reduce((a, o) => a + Math.max(0, dueOf(o)), 0);
   const monthPay = S.payments
     .filter((p) => thisMonth(p.paid_at || p.created_at))
     .reduce((a, p) => a + Number(p.amount || 0), 0);
 
-  const dueList = live.filter((o) => dueOf(o) > 0)
-    .sort((a, b) => dueOf(b) - dueOf(a));
-  const dueHtml = dueList.length ? dueList.map((o) =>
-    '<tr data-act="open-order" data-id="' + o.id + '">' +
-    '<td><div class="rowtitle">' + esc(custName(o.customer_id, o.customer_name)) + '</div>' +
-    '<div class="rowsub">' + esc(o.code || '') + '</div></td>' +
-    '<td class="num">' + money(orderTotal(o)) + '</td>' +
-    '<td class="num">' + money(paidOf(o.id)) + '</td>' +
-    '<td class="num" style="color:var(--danger);font-weight:600">' + money(dueOf(o)) + '</td>' +
+  // 每笔欠款压了多久
+  const dueRows = live.filter((o) => dueOf(o) > 0).map((o) => {
+    const days = ageDaysOf(o);
+    return { o: o, days: days, due: dueOf(o), bucket: ageBucketOf(days) };
+  }).sort((a, b) => b.days - a.days);
+
+  const buckets = [0, 1, 2, 3].map((i) => {
+    const list = dueRows.filter((x) => x.bucket === i);
+    return {
+      i: i,
+      label: AGE_LABEL[i],
+      amt: list.reduce((a, x) => a + x.due, 0),
+      n: list.length,
+    };
+  });
+  const overdueAmt = buckets[1].amt + buckets[2].amt + buckets[3].amt;
+  const overdueN = buckets[1].n + buckets[2].n + buckets[3].n;
+
+  const bucketHtml = '<div class="cards age-cards">' + buckets.map((b) =>
+    '<div class="stat age-b' + b.i + '">' +
+      '<b>' + (b.amt ? money(b.amt) : '—') + '</b>' +
+      '<span>' + b.label + (b.n ? '　' + b.n + ' 笔' : '') + '</span>' +
+    '</div>').join('') + '</div>';
+
+  const dueHtml = dueRows.length ? dueRows.map((x) =>
+    '<tr data-act="open-order" data-id="' + x.o.id + '">' +
+    '<td><div class="rowtitle">' + esc(custName(x.o.customer_id, x.o.customer_name)) + '</div>' +
+    '<div class="rowsub">' + esc(x.o.code || '') + '</div></td>' +
+    '<td class="num">' + money(orderTotal(x.o)) + '</td>' +
+    '<td class="num">' + money(paidOf(x.o.id)) + '</td>' +
+    '<td class="num" style="color:var(--danger);font-weight:600">' + money(x.due) + '</td>' +
+    '<td class="num age-t ag' + x.bucket + '">' + x.days + ' 天</td>' +
     '</tr>').join('')
-    : '<tr><td colspan="4" class="empty">没有待收的，全结清了。</td></tr>';
+    : '<tr><td colspan="5" class="empty">没有待收的，全结清了。</td></tr>';
 
   const recent = (S.payments || []).slice().sort((a, b) =>
     String(b.paid_at || b.created_at).localeCompare(String(a.paid_at || a.created_at))).slice(0, 12);
@@ -249,9 +289,14 @@ function payPanel(orders) {
       '<div class="stat warn"><b>' + money(totalDue) + '</b><span>还没收到的钱</span></div>' +
       '<div class="stat ok"><b>' + money(monthPay) + '</b><span>本月已收</span></div>' +
     '</div>' +
-    '<div class="panel" style="margin-bottom:14px"><h4>待收款（按金额从大到小）</h4>' +
+    bucketHtml +
+    (overdueN
+      ? '<div class="hint" style="margin:-4px 0 12px">有 <b>' + overdueN + '</b> 笔超过 30 天没结清，一共 ' +
+        money(overdueAmt) + '，该挨个打电话了。</div>'
+      : '') +
+    '<div class="panel" style="margin-bottom:14px"><h4>待收款（按压了多久排，最久的在最上面）</h4>' +
       '<div class="table-wrap" style="border:none"><table><thead><tr>' +
-      '<th>客户</th><th class="num">订单额</th><th class="num">已收</th><th class="num">还差</th>' +
+      '<th>客户</th><th class="num">订单额</th><th class="num">已收</th><th class="num">还差</th><th class="num">压了多久</th>' +
       '</tr></thead><tbody>' + dueHtml + '</tbody></table></div></div>' +
     '<div class="panel"><h4>最近的收款</h4>' +
       '<div class="table-wrap" style="border:none"><table><thead><tr>' +

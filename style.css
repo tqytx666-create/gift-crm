@@ -948,3 +948,20 @@ body.share-mode .drawer,body.share-mode .drawer-mask,body.share-mode #modalMask{
 @media (max-width:760px){
   .sc-ms{display:none}
 }
+
+/* ---------- 回款账龄 ---------- */
+.age-cards{grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:8px}
+.age-cards .stat{padding:10px 12px;border-left-width:3px}
+.age-cards .stat b{font-size:15px}
+.age-cards .stat span{font-size:11px}
+.age-b1{border-left:3px solid #c9a227}
+.age-b2{border-left:3px solid #cf7f2e}
+.age-b3{border-left:3px solid #b03a2e}
+.age-t{font-variant-numeric:tabular-nums}
+.ag1{color:#a5821a}
+.ag2{color:#b8621f}
+.ag3{color:#b03a2e;font-weight:600}
+@media (max-width:760px){
+  .age-cards{grid-template-columns:repeat(2,1fr)}
+  .age-cards .stat b{font-size:14px}
+}
